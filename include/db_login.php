@@ -2,9 +2,9 @@
 // *** To make HuMo-genealogy work, fill these lines properly! ***
 // *** Om HuMo-genealogy werkend te krijgen onderstaande regels GOED invullen! ***
 define("DATABASE_HOST",     'mysql');
-define("DATABASE_USERNAME", 'root');
+define("DATABASE_USERNAME", 'khandesh21at_adm');
 define("DATABASE_PASSWORD", '');
-define("DATABASE_NAME",     'humo-gen');
+define("DATABASE_NAME",     'khandesh21at_humogen');
 
 // *** Needed for Docker ***
 $DATABASE_HOST = '';
