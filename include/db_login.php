@@ -3,14 +3,14 @@
 // *** Om HuMo-genealogy werkend te krijgen onderstaande regels GOED invullen! ***
 define("DATABASE_HOST",     'mysql');
 define("DATABASE_USERNAME", 'khandesh21at_adm');
-define("DATABASE_PASSWORD", '');
+define("DATABASE_PASSWORD", 'XoAgN~CQC1$)Hh1V');
 define("DATABASE_NAME",     'khandesh21at_humogen');
 
 // *** Needed for Docker ***
 $DATABASE_HOST = '';
-$DATABASE_USERNAME = '';
-$DATABASE_PASSWORD = '';
-$DATABASE_NAME = '';
+$DATABASE_USERNAME = 'khandesh21at_adm';
+$DATABASE_PASSWORD = 'XoAgN~CQC1$)Hh1V';
+$DATABASE_NAME = 'khandesh21at_humogen';
 $USE_ENV_FOR_DB = true;
 
 // *** DON'T CHANGE ANYTHING BELOW THIS LINE! ***
