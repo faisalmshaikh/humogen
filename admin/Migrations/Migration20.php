@@ -19,7 +19,8 @@ class Migration20
     }
 
     public function up()
-    {
+    {   
+        error_log('[Migration20] Starting migration.');
         global $humo_option;
 
         $parseGedcomDate = new \Genealogy\Include\ParseGedcomDate();
