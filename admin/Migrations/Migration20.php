@@ -60,6 +60,7 @@ class Migration20
         $event_new_datetime = date('Y-m-d H:i:s', strtotime('1970-01-01 00:00:01'));
 
         // *** Move birth, baptise, etc. and marriage items to event table ***
+        error_log('[Migration20] Inserting birth events.');
         if ($humo_option['admin_hebnight'] == 'y') {
             $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_time, event_place, event_text, event_date_hebnight, stillborn, event_new_datetime)
@@ -86,6 +87,7 @@ class Migration20
             ");
         }
 
+        error_log('[Migration20] Inserting baptism events.');
         $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_place, event_text, event_new_datetime)
             SELECT pers_tree_id, pers_gedcomnumber, 'person', 'baptism', pers_bapt_date, pers_bapt_place, pers_bapt_text, '" . $event_new_datetime . "'
@@ -95,6 +97,7 @@ class Migration20
             OR (pers_bapt_text IS NOT NULL AND pers_bapt_text != '')
         ");
 
+        error_log('[Migration20] Inserting death events.');
         if ($humo_option['admin_hebnight'] == "y") {
             $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_time, event_place, event_text, event_date_hebnight, cause, event_pers_age, event_new_datetime)
@@ -121,6 +124,7 @@ class Migration20
         ");
         }
 
+        error_log('[Migration20] Inserting burial events.');
         if ($humo_option['admin_hebnight'] == "y") {
             $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_place, event_text, event_date_hebnight, cremation, event_new_datetime)
@@ -143,6 +147,7 @@ class Migration20
         ");
         }
 
+        error_log('[Migration20] Inserting relation events.');
         $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_end_date, event_place, event_text, event_new_datetime)
             SELECT fam_tree_id, fam_gedcomnumber, 'family', 'relation', fam_relation_date, fam_relation_end_date, fam_relation_place, fam_relation_text, '" . $event_new_datetime . "'
@@ -153,6 +158,7 @@ class Migration20
             OR (fam_relation_end_date IS NOT NULL AND fam_relation_end_date != '')
         ");
 
+        error_log('[Migration20] Inserting marriage notice events.');
         if ($humo_option['admin_hebnight'] == "y") {
             $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_heb_night, event_place, event_text, event_new_datetime)
@@ -175,6 +181,7 @@ class Migration20
             ");
         }
 
+        error_log('[Migration20] Inserting marriage events.');
         if ($humo_option['admin_hebnight'] == "y") {
             $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_heb_night, event_place, event_text, authority, event_new_datetime)
@@ -199,6 +206,7 @@ class Migration20
         ");
         }
 
+        error_log('[Migration20] Inserting marriage church notice events.');
         if ($humo_option['admin_hebnight'] == "y") {
             $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_heb_night, event_place, event_text, event_new_datetime)
@@ -221,6 +229,7 @@ class Migration20
         ");
         }
 
+        error_log('[Migration20] Inserting marriage church events.');
         if ($humo_option['admin_hebnight'] == "y") {
             $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_heb_night, event_place, event_text, event_new_datetime)
@@ -243,6 +252,7 @@ class Migration20
         ");
         }
 
+        error_log('[Migration20] Inserting divorce events.');
         $this->dbh->exec("
             INSERT INTO humo_events (event_tree_id, event_connect_id, event_connect_kind, event_kind, event_date, event_place, event_text, authority, event_new_datetime)
             SELECT fam_tree_id, fam_gedcomnumber, 'family', 'divorce', fam_div_date, fam_div_place, fam_div_text, fam_div_authority, '" . $event_new_datetime . "'
@@ -254,12 +264,14 @@ class Migration20
         ");
 
         // *** Use person id's ***
+        error_log('[Migration20] Updating event person ids.');
         $this->dbh->exec("
             UPDATE humo_events e
             JOIN humo_persons p ON e.event_connect_id = p.pers_gedcomnumber AND e.event_tree_id = p.pers_tree_id AND (e.event_connect_kind = 'person' OR e.event_kind = 'ASSO')
             SET e.person_id = p.pers_id
         ");
         // *** Use family id's ***
+        error_log('[Migration20] Updating event relation ids.');
         $this->dbh->exec("
             UPDATE humo_events e
             JOIN humo_families f ON e.event_connect_id = f.fam_gedcomnumber AND e.event_tree_id = f.fam_tree_id AND (e.event_connect_kind = 'family' OR e.event_kind = 'ASSO')
@@ -267,15 +279,18 @@ class Migration20
         ");
 
         // Temp. index to improve speed.
+        error_log('[Migration20] Adding temp index.');
         $this->dbh->exec("ALTER TABLE humo_events ADD INDEX idx_event_place (event_place(100))");
 
         // *** Add missing places (from events table) in location table ***
+        error_log('[Migration20] Adding missing places to location table.');
         $this->dbh->exec("
             INSERT IGNORE INTO humo_location (location_location)
             SELECT DISTINCT event_place FROM humo_events WHERE event_place IS NOT NULL AND event_place != ''
             AND event_place NOT IN (SELECT location_location FROM humo_location)
         ");
         // *** Use location id's ***
+        error_log('[Migration20] Updating event place ids.');
         $this->dbh->exec("
             UPDATE humo_events e
             JOIN humo_location l ON e.event_place = l.location_location
@@ -284,6 +299,7 @@ class Migration20
         ");
 
         // Remove temp. index.
+        error_log('[Migration20] Removing temp. index.');
         $this->dbh->exec("ALTER TABLE humo_events DROP INDEX idx_event_place");
 
         // *** Update event date columns ***
