@@ -287,21 +287,46 @@ class Migration20
         $this->dbh->exec("ALTER TABLE humo_events DROP INDEX idx_event_place");
 
         // *** Update event date columns ***
+        error_log('[Migration20] Starting event date conversion.');
         $this->dbh->beginTransaction();
-        $stmt = $this->dbh->query("SELECT event_id, event_date FROM humo_events WHERE event_date IS NOT NULL AND event_date != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $parsed = $parseGedcomDate->parse($row['event_date']);
-            $update = $this->dbh->prepare("
-                UPDATE humo_events SET date_year = :year, date_month = :month, date_day = :day WHERE event_id = :id
-            ");
-            $update->execute([
-                ':year' => $parsed['year'],
-                ':month' => $parsed['month'],
-                ':day' => $parsed['day'],
-                ':id' => $row['event_id'],
-            ]);
+
+        try {
+            $stmt = $this->dbh->query("SELECT event_id, event_date FROM humo_events WHERE event_date IS NOT NULL AND event_date != ''");
+            $processed_events = 0;
+
+            error_log('[Migration20] Event date query executed successfully.');
+
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $parsed = $parseGedcomDate->parse($row['event_date']);
+                $update = $this->dbh->prepare("
+                    UPDATE humo_events SET date_year = :year, date_month = :month, date_day = :day WHERE event_id = :id
+                ");
+                $update->execute([
+                    ':year' => $parsed['year'],
+                    ':month' => $parsed['month'],
+                    ':day' => $parsed['day'],
+                    ':id' => $row['event_id'],
+                ]);
+
+                $processed_events++;
+                if ($processed_events === 1 || $processed_events % 1000 === 0) {
+                    error_log('[Migration20] Processed event date rows: ' . $processed_events . '.');
+                }
+            }
+
+            error_log('[Migration20] Event date conversion completed. Rows processed: ' . $processed_events . '.');
+            $this->dbh->commit();
+            error_log('[Migration20] Event date transaction committed.');
+        } catch (\Throwable $e) {
+            if ($this->dbh->inTransaction()) {
+                $this->dbh->rollBack();
+                error_log('[Migration20] Event date transaction rolled back.');
+            }
+
+            error_log('[Migration20] Event date conversion failed: ' . $e->getMessage());
+            error_log('[Migration20] Failure location: ' . $e->getFile() . ':' . $e->getLine());
+            throw $e;
         }
-        $this->dbh->commit();
 
         // *** Remove old person fields ***
         $this->dbh->exec("ALTER TABLE humo_persons DROP COLUMN pers_birth_date");
