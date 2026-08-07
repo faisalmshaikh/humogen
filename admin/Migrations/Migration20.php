@@ -40,7 +40,7 @@ class Migration20
             ADD COLUMN event_time TEXT NULL after event_text,
             ADD COLUMN authority TEXT NULL after event_event_extra,
             ADD COLUMN stillborn VARCHAR(1) DEFAULT 'n' AFTER authority,
-            ADD COLUMN cause VARCHAR(255) DEFAULT NULL AFTER stillborn,
+            ADD COLUMN cause TEXT DEFAULT NULL AFTER stillborn,
             ADD COLUMN cremation VARCHAR(1) DEFAULT NULL AFTER cause,
             ADD COLUMN event_end_date VARCHAR(35) DEFAULT NULL AFTER cremation
         ");
