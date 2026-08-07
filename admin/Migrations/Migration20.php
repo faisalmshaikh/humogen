@@ -37,7 +37,7 @@ class Migration20
             ADD COLUMN date_year INT NULL after event_date,
             ADD COLUMN date_month TINYINT NULL after date_year,
             ADD COLUMN date_day TINYINT NULL after date_month,
-            
+            ADD COLUMN event_time TEXT NULL after event_text,
             ADD COLUMN authority TEXT NULL after event_event_extra,
             ADD COLUMN stillborn VARCHAR(1) DEFAULT 'n' AFTER authority,
             ADD COLUMN cause VARCHAR(255) DEFAULT NULL AFTER stillborn,
