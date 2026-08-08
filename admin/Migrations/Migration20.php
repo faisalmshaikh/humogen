@@ -281,7 +281,7 @@ class Migration20
 
         // Temp. index to improve speed.
         error_log('[Migration20] Adding temp index.');
-        $this->dbh->exec("ALTER TABLE humo_events ADD INDEX idx_event_place (event_place(100))");
+        $this->dbh->exec("ALTER TABLE humo_events ADD INDEX idx_event_place (event_place)");
 
         // *** Add missing places (from events table) in location table ***
         error_log('[Migration20] Adding missing places to location table.');
