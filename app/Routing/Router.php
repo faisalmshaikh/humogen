@@ -82,81 +82,66 @@ class Router
         $result_array['page404'] = false;
         //$result_array['page301'] = false;
 
-        // *** Option url_rewrite disabled ***
-        // http://127.0.0.1/HuMo-genealogy/index.php?page=ancestor_sheet&tree_id=3&id=I1180
-        // change into (but still process index.php, so this will work in NGinx with url_rewrite disabled):
-        // http://127.0.0.1/HuMo-genealogy/ancestor_sheet&tree_id=3&id=I1180
-        if (isset($_GET['page'])) {
-            //http://127.0.0.1/HuMo-genealogy/index.php?page=list&tree_id=3&adv_search=1&index_list=search
-            $request_uri = str_replace('index.php?page=', '', $request_uri);
-            // *** Example: http://localhost/HuMo-genealogy/list&tree_id=3&adv_search=1&index_list=search ***
-            $request_uri = strtok($request_uri, "&"); // Remove last part of url: ?start=1&item=11
+        // Query-string routes take priority over URL path matching. This prevents
+        // folder names such as "familytree" from being mistaken for the family route.
+        if (isset($_GET['page']) && is_string($_GET['page'])) {
+            foreach ($this->routes_array as $route_array) {
+                // Match both canonical page names and legacy route aliases such as
+                // page=descendant_report, which resolves to the family page.
+                if ($route_array['page'] === $_GET['page'] || $route_array['path'] === $_GET['page']) {
+                    $result_array['page'] = $route_array['page'];
+                    $result_array['title'] = $humo_option["database_name"] . ' - ' . __($route_array['title']);
+
+                    $request_path = parse_url($request_uri, PHP_URL_PATH) ?: '';
+                    $index_position = strrpos($request_path, '/index.php');
+                    $result_array['tmp_path'] = $index_position !== false
+                        ? substr($request_path, 0, $index_position + 1)
+                        : '';
+                    break;
+                }
+            }
         } else {
-            // *** Example: http://localhost/HuMo-genealogy/photoalbum/2?start=1&item=11 ***
-            $request_uri = strtok($request_uri, "?"); // Remove last part of url: ?start=1&item=11
-        }
+            // Match rewritten routes by complete path segments, not substrings.
+            $request_path = parse_url($request_uri, PHP_URL_PATH) ?: '';
+            $url_array = array_values(array_filter(explode('/', trim($request_path, '/')), 'strlen'));
 
-        // *** Get url_rewrite variables ***
-        $url_array = explode('/', $request_uri);
-
-        foreach ($this->routes_array as $route_array) {
-            //$vars = [];
-
-            if (strpos($request_uri, $route_array['path']) > 0) {
-                $result_array['page'] = $route_array['page'];
-
-                // TODO remove title from router script.
-                $result_array['title'] = $humo_option["database_name"] . ' - ' . __($route_array['title']);
-
-                $url_position = strpos($request_uri, $route_array['path']);
-                $result_array['tmp_path'] = substr($request_uri, 0, $url_position);
-
-                // *** Check if link to website is valid. Remove last part of url: /photoalbum/2 and check if folder exists. ***
-                // *** To prevent wrong links like: /humo-gen/list_places_families/fanchart/relations/11?pers_id=52211 ***
-                if ($url_position !== false) {
-                    $check_route = substr($request_uri, 0, $url_position);
-                    if (!file_exists($_SERVER['DOCUMENT_ROOT'] . '/' . $check_route)) {
-                        $result_array['page404'] = true;
-                    }
+            foreach ($this->routes_array as $route_array) {
+                $route_position = array_search($route_array['path'], $url_array, true);
+                if ($route_position === false) {
+                    continue;
                 }
 
-                // *** Get url_rewrite variables ***
+                $result_array['page'] = $route_array['page'];
+                $result_array['title'] = $humo_option["database_name"] . ' - ' . __($route_array['title']);
+
+                $path_segments = array_slice($url_array, 0, $route_position);
+                $result_array['tmp_path'] = $path_segments
+                    ? '/' . implode('/', $path_segments) . '/'
+                    : '';
+
+                // *** Check if link to website is valid. ***
+                $check_route = $path_segments ? implode('/', $path_segments) . '/' : '';
+                if ($check_route && !file_exists($_SERVER['DOCUMENT_ROOT'] . '/' . $check_route)) {
+                    $result_array['page404'] = true;
+                }
+
+                // *** Get URL rewrite variables ***
                 if ($humo_option["url_rewrite"] == "j" && isset($route_array['vars'])) {
                     $vars = explode(',', $route_array['vars']);
-                    $nr_vars = count($vars);
+                    $value_position = $route_position + 1;
 
-                    //$vars_processed = false;
-
-                    // *** Only 1 variable in url_rewrite, $vars='select_tree_id' ***
-                    // Example: http://127.0.0.1/humo-genealogy/index/3
-                    if ($nr_vars == 1 && $vars[0] === 'select_tree_id') {
-                        // *** Get last item of array ***
-                        $result_array['select_tree_id']  = end($url_array);
-                        //$vars_processed = true;
+                    if (count($vars) === 1 && isset($url_array[$value_position])) {
+                        $result_array[$vars[0] === 'select_tree_id' ? 'select_tree_id' : 'id'] = $url_array[$value_position];
                     }
 
-                    // Example, cms page: http://127.0.0.1/humo-genealogy/cms_pages/4
-                    if ($nr_vars == 1 && $vars[0] === 'id') {
-                        // *** Get last item of array ***
-                        $result_array['id']  = end($url_array);
-                        //$vars_processed = true;
+                    if (count($vars) === 2) {
+                        if (isset($url_array[$value_position])) {
+                            $result_array['select_tree_id'] = $url_array[$value_position];
+                        }
+                        if (isset($url_array[$value_position + 1])) {
+                            $result_array[$vars[1]] = $url_array[$value_position + 1];
+                        }
                     }
-
-                    // *** 2 variables, 1st variable = family tree ***
-                    // Example: http://127.0.0.1/humo-genealogy/list_names/3/D
-                    if ($nr_vars == 2 && $vars[0] === 'select_tree_id') {
-                        // *** Get last item of array ***
-                        $result_array[$vars[1]] = end($url_array);
-                        // *** Get previous item of array ***
-                        $result_array['select_tree_id']  = prev($url_array);
-                        //$vars_processed = true;
-                    }
-
-                    // TEST
-                    //if ($nr_vars > 0 && !$vars_processed) {
-                    //    $result_array['page404'] = true;
-                    //}
-
                 }
                 break;
             }
