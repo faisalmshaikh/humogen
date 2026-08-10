@@ -1233,7 +1233,7 @@ if ($person->pers_sexe == 'M') {
             <?php } ?>
 
             <ul id="sortable<?= $i; ?>" class="sortable-children sortable-pages list-group ui-sortable" data-family-id="<?= $familyDb->fam_id; ?>">
-                foreach ($children as $j => $child) { ?>
+                <?php foreach ($children as $j => $child) { ?>
                     <li class="list-group-item">
                         <div class="row">
                             <div class="col-md-1">
