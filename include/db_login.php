@@ -1,16 +1,20 @@
 <?php
+
+require_once __DIR__ . '/../../../.env.php';
+
+// 2. Read the credentials directly from the array
+$DATABASE_HOST = $_SERVER['DATABASE_HOST'] ;
+$DATABASE_USERNAME = $_SERVER['DATABASE_USERNAME'];
+$DATABASE_PASSWORD = $_SERVER['DATABASE_PASSWORD'] ;
+$DATABASE_NAME = $_SERVER['DATABASE_NAME'] ;
+
 // *** To make HuMo-genealogy work, fill these lines properly! ***
 // *** Om HuMo-genealogy werkend te krijgen onderstaande regels GOED invullen! ***
-define("DATABASE_HOST",     'localhost');
-define("DATABASE_USERNAME", 'khandesh21at_adm');
-define("DATABASE_PASSWORD", '');
-define("DATABASE_NAME",     'khandesh21at_humogen');
+define("DATABASE_HOST",     $DATABASE_HOST );
+define("DATABASE_USERNAME", $DATABASE_USERNAME);
+define("DATABASE_PASSWORD", $DATABASE_PASSWORD);
+define("DATABASE_NAME",     $DATABASE_NAME);
 
-// *** Needed for Docker ***
-$DATABASE_HOST = 'localhost';
-$DATABASE_USERNAME = 'khandesh21at_adm';
-$DATABASE_PASSWORD = '';
-$DATABASE_NAME = 'khandesh21at_humogen';
 $USE_ENV_FOR_DB = true;
 
 // *** DON'T CHANGE ANYTHING BELOW THIS LINE! ***
