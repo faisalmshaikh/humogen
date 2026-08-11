@@ -3,6 +3,7 @@
 namespace Genealogy\App\Model;
 
 use Genealogy\App\Model\BaseModel;
+use Genealogy\Include\PasswordPolicy;
 use PDO;
 
 class RegisterModel extends BaseModel
@@ -45,8 +46,6 @@ class RegisterModel extends BaseModel
         $register["show_form"] = true;
         $register["error"] = '';
         if (isset($_POST['send_mail']) && $register["register_allowed"] == true) {
-            $register["show_form"] = false;
-
             $usersql = 'SELECT * FROM humo_users WHERE user_name = :user_name';
             $stmt = $this->dbh->prepare($usersql);
             $stmt->execute([':user_name' => $_POST["register_name"]]);
@@ -56,17 +55,24 @@ class RegisterModel extends BaseModel
                 $register["error"] = __('ERROR: username already exists');
             }
 
-            if ($_POST["register_password"] != $_POST["register_repeat_password"]) {
+            $password = (string)($_POST["register_password"] ?? '');
+            $repeat_password = (string)($_POST["register_repeat_password"] ?? '');
+
+            if ($password != $repeat_password) {
                 $register["error"] = __('ERROR: No identical passwords');
             }
 
-            if (strlen($_POST["register_password"]) < 6) {
-                $register["error"] = __('ERROR: Password has to contain at least 6 characters');
+            if (!$register["error"]) {
+                $password_error = PasswordPolicy::validate($password);
+                if ($password_error !== '') {
+                    $register["error"] = __($password_error);
+                }
             }
 
             if (!$register["error"]) {
+                $register["show_form"] = false;
                 $user_register_date = date("Y-m-d H:i");
-                $hashToStoreInDb = password_hash($_POST["register_password"], PASSWORD_DEFAULT);
+                $hashToStoreInDb = password_hash($password, PASSWORD_DEFAULT);
                 $sql = "INSERT INTO humo_users 
                     (user_name, user_remark, user_register_date, user_mail, user_password_salted, user_group_id)
                     VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_password_salted, :user_group_id)";

@@ -3,45 +3,12 @@
 namespace Genealogy\Admin\Models;
 
 use Genealogy\Admin\Models\AdminBaseModel;
+use Genealogy\Include\PasswordPolicy;
 use PDO;
 use PDOException;
 
 class UsersModel extends AdminBaseModel
 {
-    /**
-     * Validate a new password and, when changing one, ensure it differs from
-     * the existing password.
-     */
-    private function validate_password(string $password, ?string $current_password_hash = null, ?string $legacy_password_hash = null): string
-    {
-        if (strlen($password) < 8) {
-            return __('Error: password must be at least 8 characters long.') . '<br>';
-        }
-        if (!preg_match('/[A-Z]/', $password)) {
-            return __('Error: password must contain at least one uppercase letter.') . '<br>';
-        }
-        if (!preg_match('/[a-z]/', $password)) {
-            return __('Error: password must contain at least one lowercase letter.') . '<br>';
-        }
-        if (!preg_match('/[0-9]/', $password)) {
-            return __('Error: password must contain at least one digit.') . '<br>';
-        }
-        if (!preg_match('/[^a-zA-Z0-9\s]/', $password)) {
-            return __('Error: password must contain at least one special character.') . '<br>';
-        }
-
-        if ($current_password_hash !== null && $current_password_hash !== '' && password_verify($password, $current_password_hash)) {
-            return __('Error: new password cannot be the same as the old password.') . '<br>';
-        }
-
-        // Existing installations may still have only the legacy MD5 value.
-        if ($legacy_password_hash !== null && $legacy_password_hash !== '' && hash_equals(strtolower($legacy_password_hash), md5($password))) {
-            return __('Error: new password cannot be the same as the old password.') . '<br>';
-        }
-
-        return '';
-    }
-
     function update_user(): string
     {
         $alert = '';
@@ -70,13 +37,13 @@ class UsersModel extends AdminBaseModel
                     ];
                     $new_password = (string)($_POST[$userDb->user_id . "password"] ?? '');
                     if ($new_password !== '') {
-                        $password_alert = $this->validate_password(
+                        $password_alert = PasswordPolicy::validate(
                             $new_password,
                             $userDb->user_password_salted ?? null,
                             $userDb->user_password ?? null
                         );
                         if ($password_alert !== '') {
-                            $alert = $password_alert;
+                            $alert = __($password_alert) . '<br>';
                             continue;
                         }
 
@@ -107,9 +74,9 @@ class UsersModel extends AdminBaseModel
             } elseif ($add_password === '') {
                 $alert = __('Error: password cannot be empty.') . '<br>';
             } else {
-                $password_alert = $this->validate_password($add_password);
+                $password_alert = PasswordPolicy::validate($add_password);
                 if ($password_alert !== '') {
-                    return $password_alert;
+                    return __($password_alert) . '<br>';
                 }
 
                 $user_prep = $this->dbh->prepare("INSERT INTO humo_users SET

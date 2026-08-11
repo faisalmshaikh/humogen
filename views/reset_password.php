@@ -209,12 +209,15 @@ elseif ((isset($_GET['ak']) && $_GET['ak'] != '') || $resetpassword['message_pas
         <div class="container">
             <div class="row mb-2">
                 <label for="password" class="col-sm-3 col-form-label"><?= __('New Password'); ?></label>
-                <div class="col-md-3"><input type="password" name="password" id="password" class="form-control"></div>
+                <div class="col-md-3">
+                    <input type="password" name="password" id="password" class="form-control" minlength="8" required title="<?= __('8 characters minimum, including uppercase, lowercase, digit and special character'); ?>">
+                    <small class="form-text text-muted"><?= __('Password must be at least 8 characters and include uppercase, lowercase, a digit, and a special character.'); ?></small>
+                </div>
             </div>
 
             <div class="row mb-2">
                 <label for="password2" class="col-sm-3 col-form-label"><?= __('Re-enter new Password'); ?></label>
-                <div class="col-md-3"><input type="password" name="password2" id="password2" class="form-control"></div>
+                <div class="col-md-3"><input type="password" name="password2" id="password2" class="form-control" minlength="8" required title="<?= __('8 characters minimum, including uppercase, lowercase, digit and special character'); ?>"></div>
             </div>
 
             <div class="row mb-2">

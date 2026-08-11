@@ -4,6 +4,7 @@ namespace Genealogy\App\Model;
 
 use Genealogy\App\Model\BaseModel;
 use Genealogy\Include\Authenticator;
+use Genealogy\Include\PasswordPolicy;
 use PDO;
 
 class UserSettingsModel extends BaseModel
@@ -37,33 +38,48 @@ class UserSettingsModel extends BaseModel
     public function updateSettings(): string
     {
         $result_message = '';
+        $settings_updated = false;
         if (isset($_POST['update_settings'])) {
-            if ($_POST["register_password"] != $_POST["register_repeat_password"]) {
+            $password = (string)($_POST["register_password"] ?? '');
+            $repeat_password = (string)($_POST["register_repeat_password"] ?? '');
+            if ($password != $repeat_password) {
                 $result_message = __('ERROR: No identical passwords');
             }
 
             if ($result_message == '') {
-                if ($_POST["register_password"] != '') {
-                    $hashToStoreInDb = password_hash($_POST["register_password"], PASSWORD_DEFAULT);
+                if ($password !== '') {
+                    $password_error = PasswordPolicy::validate(
+                        $password,
+                        $this->userDb->user_password_salted ?? null,
+                        $this->userDb->user_password ?? null
+                    );
+                    if ($password_error !== '') {
+                        $result_message = __($password_error);
+                    } else {
+                        $hashToStoreInDb = password_hash($password, PASSWORD_DEFAULT);
+                    }
                 }
-                $sql = "UPDATE humo_users SET user_mail = :user_mail";
-                $params = [
-                    ':user_mail' => $_POST["register_mail"]
-                ];
-                if (isset($hashToStoreInDb)) {
-                    $sql .= ", user_password_salted = :user_password_salted";
-                    $params[':user_password_salted'] = $hashToStoreInDb;
+                if ($result_message == '') {
+                    $sql = "UPDATE humo_users SET user_mail = :user_mail";
+                    $params = [
+                        ':user_mail' => $_POST["register_mail"]
+                    ];
+                    if (isset($hashToStoreInDb)) {
+                        $sql .= ", user_password_salted = :user_password_salted";
+                        $params[':user_password_salted'] = $hashToStoreInDb;
+                    }
+                    $sql .= " WHERE user_id = :user_id";
+                    $params[':user_id'] = $this->userDb->user_id;
+
+                    $stmt = $this->dbh->prepare($sql);
+                    $stmt->execute($params);
+
+                    $settings_updated = true;
+                    $result_message = __('Your settings are updated!');
                 }
-                $sql .= " WHERE user_id = :user_id";
-                $params[':user_id'] = $this->userDb->user_id;
-
-                $stmt = $this->dbh->prepare($sql);
-                $stmt->execute($params);
-
-                $result_message = __('Your settings are updated!');
 
                 // *** Only update 2FA settings if database is updated and 2FA settings are changed ***
-                if ($this->userDb->user_2fa_enabled && isset($_POST['user_2fa_check'])) {
+                if ($settings_updated && $this->userDb->user_2fa_enabled && isset($_POST['user_2fa_check'])) {
                     // *** 2FA Authenticator (2fa_code = code from 2FA authenticator) ***
                     if (!isset($_POST['user_2fa_enabled']) && $this->userDb->user_2fa_enabled) {
                         // *** Disable 2FA ***

@@ -3,6 +3,7 @@
 namespace Genealogy\App\Model;
 
 use Genealogy\App\Model\BaseModel;
+use Genealogy\Include\PasswordPolicy;
 use PDO;
 
 class ResetPasswordModel extends BaseModel
@@ -108,8 +109,8 @@ class ResetPasswordModel extends BaseModel
     {
         $message_password = '';
         if (isset($_POST['password']) && $_POST['password'] != '') {
-            $password = $_POST['password'];
-            $password2 = $_POST['password2'];
+            $password = (string)$_POST['password'];
+            $password2 = (string)($_POST['password2'] ?? '');
             $tm = time() - 86400;
 
             $sql = $this->dbh->prepare("SELECT retrieval_userid FROM humo_pw_retrieval
@@ -122,12 +123,23 @@ class ResetPasswordModel extends BaseModel
                 $message_password = $message_password . __('Password activation failed.') . '&nbsp;' . __('Please contact the site owner.') . '<br>';
             }
 
-            if (strlen($password) < 4 || strlen($password) > 15) {
-                $message_password = $message_password . __('Password must be at least 4 char and maximum 15 char long') . '<br>';
-            }
-
             if ($password <> $password2) {
                 $message_password = $message_password . __('The passwords don\'t match!') . '<br>';
+            }
+
+            if ($message_password === '') {
+                $user_stmt = $this->dbh->prepare("SELECT user_password_salted, user_password FROM humo_users WHERE user_id = :userid");
+                $user_stmt->execute([':userid' => $userid]);
+                $userDb = $user_stmt->fetch(PDO::FETCH_OBJ);
+
+                $password_error = PasswordPolicy::validate(
+                    $password,
+                    $userDb->user_password_salted ?? null,
+                    $userDb->user_password ?? null
+                );
+                if ($password_error !== '') {
+                    $message_password = __($password_error) . '<br>';
+                }
             }
         }
         return $message_password;

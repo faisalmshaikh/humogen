@@ -38,14 +38,15 @@ if (isset($data["user"]->user_name) && $user['group_menu_change_password'] == 'y
             <div class="mb-2 row">
                 <label for="register_password" class="col-sm-3 col-form-label"><?= __('Password'); ?></label>
                 <div class="col-sm-5">
-                    <input type="password" id="register_password" class="form-control" name="register_password">
+                    <input type="password" id="register_password" class="form-control" name="register_password" minlength="8" title="<?= __('8 characters minimum, including uppercase, lowercase, digit and special character'); ?>">
+                    <small class="form-text text-muted"><?= __('Password must be at least 8 characters and include uppercase, lowercase, a digit, and a special character.'); ?></small>
                 </div>
             </div>
 
             <div class="mb-2 row">
                 <label for="register_repeat_password" class="col-sm-3 col-form-label"><?= __('Repeat password'); ?></label>
                 <div class="col-sm-5">
-                    <input type="password" id="register_repeat_password" class="form-control" name="register_repeat_password">
+                    <input type="password" id="register_repeat_password" class="form-control" name="register_repeat_password" minlength="8" title="<?= __('8 characters minimum, including uppercase, lowercase, digit and special character'); ?>">
                 </div>
             </div>
 
