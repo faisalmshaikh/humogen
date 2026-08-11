@@ -2,12 +2,6 @@
 
 require_once __DIR__ . '/../../../.env.php';
 
-// 2. Read the credentials directly from the array
-$DATABASE_HOST = $_SERVER['DATABASE_HOST'] ;
-$DATABASE_USERNAME = $_SERVER['DATABASE_USERNAME'];
-$DATABASE_PASSWORD = $_SERVER['DATABASE_PASSWORD'] ;
-$DATABASE_NAME = $_SERVER['DATABASE_NAME'] ;
-
 // *** To make HuMo-genealogy work, fill these lines properly! ***
 // *** Om HuMo-genealogy werkend te krijgen onderstaande regels GOED invullen! ***
 define("DATABASE_HOST",     $DATABASE_HOST );

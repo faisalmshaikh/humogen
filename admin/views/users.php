@@ -86,7 +86,7 @@ $user = $dbh->query($usersql);
                     <td><b><?= __('no need to log in'); ?></b></td>
                 <?php } else { ?>
                     <td><input type="text" name="<?= $userDb->user_id; ?>usermail" value="<?= $userDb->user_mail; ?>" size="20" class="form-control form-control-sm"></td>
-                    <td><input type="password" name="<?= $userDb->user_id; ?>password" size="15" class="form-control form-control-sm"></td>
+                    <td><input type="password" name="<?= $userDb->user_id; ?>password" size="15" minlength="8" class="form-control form-control-sm"></td>
                 <?php } ?>
 
                 <!-- User groups. 1st user is always admin. -->
@@ -177,7 +177,7 @@ $user = $dbh->query($usersql);
             <td></td>
             <td><input type="text" name="add_username" size="15" class="form-control form-control-sm"></td>
             <td><input type="text" name="add_usermail" size="20" class="form-control form-control-sm"></td>
-            <td><input type="password" name="add_password" size="15" minlength="10" class="form-control form-control-sm"></td>
+            <td><input type="password" name="add_password" size="15" minlength="8" class="form-control form-control-sm"></td>
             <td>
                 <!-- Select group for new user, default=family group. -->
                 <select size="1" name="add_group_id" class="form-select form-select-sm">

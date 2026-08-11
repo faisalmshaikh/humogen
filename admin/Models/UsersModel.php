@@ -8,6 +8,40 @@ use PDOException;
 
 class UsersModel extends AdminBaseModel
 {
+    /**
+     * Validate a new password and, when changing one, ensure it differs from
+     * the existing password.
+     */
+    private function validate_password(string $password, ?string $current_password_hash = null, ?string $legacy_password_hash = null): string
+    {
+        if (strlen($password) < 8) {
+            return __('Error: password must be at least 8 characters long.') . '<br>';
+        }
+        if (!preg_match('/[A-Z]/', $password)) {
+            return __('Error: password must contain at least one uppercase letter.') . '<br>';
+        }
+        if (!preg_match('/[a-z]/', $password)) {
+            return __('Error: password must contain at least one lowercase letter.') . '<br>';
+        }
+        if (!preg_match('/[0-9]/', $password)) {
+            return __('Error: password must contain at least one digit.') . '<br>';
+        }
+        if (!preg_match('/[^a-zA-Z0-9\s]/', $password)) {
+            return __('Error: password must contain at least one special character.') . '<br>';
+        }
+
+        if ($current_password_hash !== null && $current_password_hash !== '' && password_verify($password, $current_password_hash)) {
+            return __('Error: new password cannot be the same as the old password.') . '<br>';
+        }
+
+        // Existing installations may still have only the legacy MD5 value.
+        if ($legacy_password_hash !== null && $legacy_password_hash !== '' && hash_equals(strtolower($legacy_password_hash), md5($password))) {
+            return __('Error: new password cannot be the same as the old password.') . '<br>';
+        }
+
+        return '';
+    }
+
     function update_user(): string
     {
         $alert = '';
@@ -34,8 +68,19 @@ class UsersModel extends AdminBaseModel
                         ':user_group_id' => $update_fields['user_group_id'],
                         ':user_id' => $_POST[$userDb->user_id . "user_id"]
                     ];
-                    if (isset($_POST[$userDb->user_id . "password"]) && $_POST[$userDb->user_id . "password"]) {
-                        $hashToStoreInDb = password_hash($_POST[$userDb->user_id . "password"], PASSWORD_DEFAULT);
+                    $new_password = (string)($_POST[$userDb->user_id . "password"] ?? '');
+                    if ($new_password !== '') {
+                        $password_alert = $this->validate_password(
+                            $new_password,
+                            $userDb->user_password_salted ?? null,
+                            $userDb->user_password ?? null
+                        );
+                        if ($password_alert !== '') {
+                            $alert = $password_alert;
+                            continue;
+                        }
+
+                        $hashToStoreInDb = password_hash($new_password, PASSWORD_DEFAULT);
                         $set_clause .= "user_password_salted = :user_password_salted, user_password = '', ";
                         $params[':user_password_salted'] = $hashToStoreInDb;
                     }
@@ -55,13 +100,18 @@ class UsersModel extends AdminBaseModel
         if (isset($_POST['add_user']) && is_numeric($_POST["add_group_id"])) {
             // Validate username and password are not empty
             $add_username = trim($_POST["add_username"] ?? '');
-            $add_password = trim($_POST["add_password"] ?? '');
+            $add_password = (string)($_POST["add_password"] ?? '');
             
             if (empty($add_username)) {
                 $alert = __('Error: username cannot be empty.') . '<br>';
-            } elseif (empty($add_password)) {
+            } elseif ($add_password === '') {
                 $alert = __('Error: password cannot be empty.') . '<br>';
             } else {
+                $password_alert = $this->validate_password($add_password);
+                if ($password_alert !== '') {
+                    return $password_alert;
+                }
+
                 $user_prep = $this->dbh->prepare("INSERT INTO humo_users SET
                     user_name=:add_username, user_mail=:add_usermail,
                     user_password_salted=:add_password_salted, user_group_id=:add_group_id");
@@ -111,7 +161,12 @@ class UsersModel extends AdminBaseModel
             if ($check_loginDb->user_password == MD5('humogen')) {
                 $user['check_admin_pw'] = true;
             }
-            $check_password = password_verify('humogen', $check_loginDb->user_password_salted);
+            $stored_password_hash = $check_loginDb->user_password_salted ?? null;
+            if (is_string($stored_password_hash) && $stored_password_hash !== '') {
+                $check_password = password_verify('humogen', $stored_password_hash);
+            } else {
+                $check_password = false;
+            }
             if ($check_password) {
                 $user['check_admin_pw'] = true;
             }
