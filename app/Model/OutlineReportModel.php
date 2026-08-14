@@ -76,12 +76,8 @@ class OutlineReportModel extends FamilyModel
      */
     public function outline_report_html($outline_family_id, $outline_main_person, $generation_number = 0)
     {
-        global $language, $screen_mode;
-
-        $directionMarkers = new \Genealogy\Include\DirectionMarkers($language["dir"], $screen_mode);
         $personPrivacy = new \Genealogy\Include\PersonPrivacy;
         $personName_extended = new \Genealogy\Include\PersonNameExtended('compact');
-        $personData = new \Genealogy\Include\PersonData('compact');
         $languageDate = new \Genealogy\Include\LanguageDate;
         $totallyFilterPerson = new \Genealogy\Include\TotallyFilterPerson;
 
@@ -127,144 +123,33 @@ class OutlineReportModel extends FamilyModel
             $person_womanDb = $this->db_functions->get_person($familyDb->partner2_gedcomnumber);
             $privacy_woman = $personPrivacy->get_privacy($person_womanDb);
 
-            $marriage_cls = new \Genealogy\Include\MarriageCls($familyDb, $privacy_man, $privacy_woman);
-            $family_privacy = $marriage_cls->get_privacy();
-
-            $this->html_output .= '<ul class="outline-tree">';
-
-            /**
-             * Show parent1 (normally the father)
-             */
-            if ($familyDb->fam_kind != 'PRO-GEN') {
-                //onecht kind, vrouw zonder man
-                if ($family_nr == 1) {
-                    // *** Show data of man ***
-                    $this->html_output .= '<li class="generation">';
-                    $this->html_output .= '<span class="generation-number">' . $generation_number . '</span>';
-
-                    if ($swap_parent1_parent2 == true) {
-                        $this->html_output .= $personName_extended->name_extended($person_womanDb, $privacy_woman, "outline");
-                        if ($this->show_details && !$privacy_woman) {
-                            $this->html_output .= $personData->person_data($person_womanDb, $privacy_woman, "outline", $familyDb->fam_gedcomnumber);
-                        }
-
-                        if ($this->show_date == "1" && !$privacy_woman && !$this->show_details) {
-                            $this->html_output .= $directionMarkers->dirmark1 . ',';
-                            if ($this->dates_behind_names == false) {
-                                $this->html_output .= '<br>';
-                            }
-                            $this->html_output .= ' &nbsp; (' . $languageDate->language_date($person_womanDb->pers_birth_date) . ' - ' . $languageDate->language_date($person_womanDb->pers_death_date) . ')';
-                        }
-                    } else {
-                        $this->html_output .= $personName_extended->name_extended($person_manDb, $privacy_man, "outline");
-                        if ($this->show_details && !$privacy_man) {
-                            $this->html_output .= $personData->person_data($person_manDb, $privacy_man, "outline", $familyDb->fam_gedcomnumber);
-                        }
-
-                        if ($this->show_date == "1" && !$privacy_man && !$this->show_details) {
-                            $this->html_output .= $directionMarkers->dirmark1 . ',';
-                            if ($this->dates_behind_names == false) {
-                                $this->html_output .= '<br>';
-                            }
-                            $this->html_output .= ' &nbsp; (' . $languageDate->language_date($person_manDb->pers_birth_date) . ' - ' . $languageDate->language_date($person_manDb->pers_death_date) . ')';
-                        }
-                    }
-                    $this->html_output .= '</li>';
-                } else {
-                    // empty: no second show of data of main_person in outline report
-                }
-                $family_nr++;
+            if ($generation_number === 1 && $family_nr === 1) {
+                $this->html_output .= '<table class="table table-sm outline-report-table"><thead><tr>'
+                    . '<th>' . __('Generation / Name') . '</th>'
+                    . '<th>' . __('GEDCOM number') . '</th>'
+                    . '<th>' . __('Birth date') . '</th>'
+                    . '<th>' . __('Death date') . '</th>'
+                    . '<th>' . __('Phone') . '</th>'
+                    . '<th>' . __('Address') . '</th>'
+                    . '</tr></thead><tbody>';
             }
 
-            /**
-             * Show parent2 (normally the mother)
-             */
+            // *** Show parent1 (normally the father) ***
+            if ($familyDb->fam_kind != 'PRO-GEN' && $family_nr == 1) {
+                $parent1Db = $swap_parent1_parent2 ? $person_womanDb : $person_manDb;
+                $parent1Privacy = $swap_parent1_parent2 ? $privacy_woman : $privacy_man;
+                $this->appendPersonRow($parent1Db, $parent1Privacy, $generation_number, $personName_extended, $languageDate);
+            }
+            $family_nr++;
 
-            // *** Totally hide parent2 if setting is active ***
-            $show_parent2 = true;
-            if ($swap_parent1_parent2) {
-                if ($totallyFilterPerson->isTotallyFiltered($this->user, $person_manDb)) {
-                    $show_privacy_text = true;
-                    $family_privacy = true;
-                    $show_parent2 = false;
-                }
-            } else {
-                if ($totallyFilterPerson->isTotallyFiltered($this->user, $person_womanDb)) {
-                    $show_privacy_text = true;
-                    $family_privacy = true;
-                    $show_parent2 = false;
-                }
+            // *** Show parent2 (normally the mother) ***
+            $parent2Db = $swap_parent1_parent2 ? $person_manDb : $person_womanDb;
+            $parent2Privacy = $swap_parent1_parent2 ? $privacy_man : $privacy_woman;
+            if (!$totallyFilterPerson->isTotallyFiltered($this->user, $parent2Db)) {
+                $this->appendPersonRow($parent2Db, $parent2Privacy, $generation_number, $personName_extended, $languageDate);
             }
 
-            // TODO improve this script and use $parent1Db and $parent2Db.
-            // Needed for marriageCls.php. Workaround to solve bug.
-            global $parent1Db, $parent2Db;
-            if ($swap_parent1_parent2) {
-                $parent1Db = $person_womanDb;
-                $parent2Db = $person_manDb;
-            } else {
-                $parent1Db = $person_manDb;
-                $parent2Db = $person_womanDb;
-            }
-
-            $this->html_output .= '<li class="generation">';
-
-            if (!$this->show_details) {
-                $this->html_output .= ' x ' . $directionMarkers->dirmark1;
-            } else {
-                $this->html_output .= "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
-                //if ($parent1_marr == 0) {
-                if (count($relations) == 0) {
-                    if ($family_privacy) {
-                        $this->html_output .= $marriage_cls->marriage_data($familyDb, '', 'short') . "<br>";
-                    } else {
-                        $this->html_output .= $marriage_cls->marriage_data() . "<br>";
-                        //$this->html_output.= $marriage_cls->marriage_data($familyDb) . "<br>";
-                    }
-                } else {
-                    //$this->html_output .= $marriage_cls->marriage_data($familyDb, $parent1_marr + 1, 'shorter') . ' <br>';
-                    $this->html_output .= $marriage_cls->marriage_data($familyDb, $relation->relation_id + 1, 'shorter') . ' <br>';
-                }
-            }
-
-            if ($show_parent2 && $swap_parent1_parent2) {
-                $this->html_output .= $personName_extended->name_extended($person_manDb, $privacy_man, "outline");
-                if ($this->show_details && !$privacy_man) {
-                    $this->html_output .= $personData->person_data($person_manDb, $privacy_man, "outline", $familyDb->fam_gedcomnumber);
-                }
-
-                if ($this->show_date == "1" && !$privacy_man && !$this->show_details) {
-                    $this->html_output .= $directionMarkers->dirmark1 . ',';
-                    if ($this->dates_behind_names == false) {
-                        $this->html_output .= '<br>';
-                    }
-                    $this->html_output .= ' &nbsp; (' . @$languageDate->language_date($person_manDb->pers_birth_date) . ' - ' . @$languageDate->language_date($person_manDb->pers_death_date) . ')';
-                }
-            } elseif ($show_parent2) {
-                if ($this->show_details) {
-                    $this->html_output .= "&nbsp;&nbsp;&nbsp;&nbsp;";
-                }
-                $this->html_output .= $personName_extended->name_extended($person_womanDb, $privacy_woman, "outline");
-                if ($this->show_details && !$privacy_woman) {
-                    $this->html_output .= $personData->person_data($person_womanDb, $privacy_woman, "outline", $familyDb->fam_gedcomnumber);
-                }
-
-                if ($this->show_date == "1" && !$privacy_woman && !$this->show_details) {
-                    $this->html_output .= $directionMarkers->dirmark1 . ',';
-                    if ($this->dates_behind_names == false) {
-                        $this->html_output .= '<br>';
-                    }
-                    $this->html_output .= ' &nbsp; (' . @$languageDate->language_date($person_womanDb->pers_birth_date) . ' - ' . @$languageDate->language_date($person_womanDb->pers_death_date) . ')';
-                }
-            } else {
-                // *** No permission to show parent2 ***
-                $this->html_output .= __('*** Privacy filter is active, one or more items are filtered. Please login to see all items ***') . '<br>';
-            }
-            $this->html_output .= '</li>';
-
-            /**
-             * Show children
-             */
+            // *** Show children ***
             $children = $this->db_functions->get_children($familyDb->fam_id);
             if ($children) {
                 foreach ($children as $child) {
@@ -272,7 +157,7 @@ class OutlineReportModel extends FamilyModel
                     // *** Totally hide children if setting is active ***
                     if ($totallyFilterPerson->isTotallyFiltered($this->user, $childDb)) {
                         if (!$show_privacy_text) {
-                            $this->html_output .= __('*** Privacy filter is active, one or more items are filtered. Please login to see all items ***') . '<br>';
+                            $this->html_output .= '<tr><td colspan="6">' . __('*** Privacy filter is active, one or more items are filtered. Please login to see all items ***') . '</td></tr>';
                             $show_privacy_text = true;
                         }
                         continue;
@@ -288,35 +173,72 @@ class OutlineReportModel extends FamilyModel
                         // Child without own family
                         if ($this->nr_generations >= $generation_number) {
                             $childgn = $generation_number + 1;
-                            $this->html_output .= '<ul class="outline-tree">';
-                            $this->html_output .= '<li class="generation">';
-
-                            $this->html_output .= '<span class="generation-number">' . $childgn . '</span>';
-                            $this->html_output .= $personName_extended->name_extended($childDb, $child_privacy, "outline");
-                            if ($this->show_details and !$child_privacy) {
-                                $this->html_output .= $personData->person_data($childDb, $child_privacy, "outline", "");
-                            }
-
-                            if ($this->show_date == "1" and !$child_privacy and !$this->show_details) {
-                                $this->html_output .= $directionMarkers->dirmark1 . ',';
-                                if ($this->dates_behind_names == false) {
-                                    $this->html_output .= '<br>';
-                                }
-                                $this->html_output .= ' &nbsp; (' . $languageDate->language_date($childDb->pers_birth_date) . ' - ' . $languageDate->language_date($childDb->pers_death_date) . ')';
-                            }
-                            $this->html_output .= '</li>';
-                            $this->html_output .= '</ul>';
+                            $this->appendPersonRow($childDb, $child_privacy, $childgn, $personName_extended, $languageDate);
                         }
                     }
                     $this->html_output .= "\n";
                 }
             }
-            $this->html_output .= '</ul>';
         } // Show  multiple marriages
+
+        if ($generation_number === 1) {
+            $this->html_output .= '</tbody></table>';
+        }
     }
 
     public function getHtmlOutput(): string
     {
         return $this->html_output;
+    }
+
+    private function appendPersonRow($personDb, $privacy, int $generation, $personName_extended, $languageDate): void
+    {
+        if (!$personDb || $this->isPersonHidden($personDb)) {
+            return;
+        }
+
+        $name = $personName_extended->name_extended($personDb, $privacy, 'outline');
+        $birthDate = $privacy || $this->show_date != '1' ? '' : $languageDate->language_date($personDb->pers_birth_date);
+        $deathDate = $privacy || $this->show_date != '1' ? '' : $languageDate->language_date($personDb->pers_death_date);
+        $contact = $this->getContactFields($personDb, $privacy);
+        $indent = max(0, ($generation - 1) * 20);
+
+        $this->html_output .= '<tr>'
+            . '<td style="padding-inline-start: ' . $indent . 'px;"><span class="generation-number">' . $generation . '</span> ' . $name . '</td>'
+            . '<td>' . htmlspecialchars($personDb->pers_gedcomnumber ?? '', ENT_QUOTES, 'UTF-8') . '</td>'
+            . '<td>' . htmlspecialchars($birthDate, ENT_QUOTES, 'UTF-8') . '</td>'
+            . '<td>' . htmlspecialchars($deathDate, ENT_QUOTES, 'UTF-8') . '</td>'
+            . '<td>' . $contact['phone'] . '</td>'
+            . '<td>' . $contact['address'] . '</td>'
+            . '</tr>';
+    }
+
+    private function getContactFields($personDb, $privacy): array
+    {
+        $contact = ['phone' => '', 'address' => ''];
+        if ($privacy || $this->user['group_living_place'] != 'j') {
+            return $contact;
+        }
+
+        $addresses = $this->db_functions->get_addresses('person', 'person_address', $personDb->pers_gedcomnumber);
+        if (empty($addresses)) {
+            return $contact;
+        }
+
+        $address = $addresses[0];
+        if (!empty($address->address_phone)) {
+            $contact['phone'] = htmlspecialchars($address->address_phone, ENT_QUOTES, 'UTF-8');
+        }
+        if (!empty($address->address_address)) {
+            $contact['address'] = htmlspecialchars($address->address_address, ENT_QUOTES, 'UTF-8');
+        }
+
+        return $contact;
+    }
+
+    private function isPersonHidden($personDb): bool
+    {
+        $totallyFilterPerson = new \Genealogy\Include\TotallyFilterPerson;
+        return $totallyFilterPerson->isTotallyFiltered($this->user, $personDb);
     }
 }
