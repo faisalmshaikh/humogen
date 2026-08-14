@@ -603,8 +603,10 @@ $selected_place = '';
                 <th><?= __('Places'); ?></th>
             <?php } ?>
             <th colspan="2"><?= __('Name'); ?></th>
+            <th colspan="2"><?= __('Parents'); ?></th>
             <th colspan="2" width="250px"><?= ucfirst(__('born')) . '/ ' . ucfirst(__('baptised')); ?></th>
             <th colspan="2" width="250px"><?= ucfirst(__('died')) . '/ ' . ucfirst(__('buried')); ?></th>
+            <th><?= __('Residence city & country'); ?></th>
             <?php if ($select_trees == 'all_trees' or $select_trees == 'all_but_this') {
                 echo '<th>' . __('Family tree') . '</th>';
             } ?>
@@ -652,6 +654,8 @@ $selected_place = '';
                         <?= ucfirst(__('lastname')); ?> <img src="images/button3<?= $img; ?>.png" alt="<?= __('Sort'); ?>" title="<?= __('Sort'); ?>">
                     </a>
                 </th>
+
+                <th colspan="2"><br></th>
 
                 <?php
                 $style = '';
@@ -728,6 +732,8 @@ $selected_place = '';
                         <?= __('Place'); ?> <img src="images/button3<?= $img; ?>.png" alt="<?= __('Sort'); ?>" title="<?= __('Sort'); ?>">
                     </a>
                 </th>
+
+                <th><br></th>
 
                 <?php if ($select_trees == 'all_trees' or $select_trees == 'all_but_this') { ?>
                     <th><br></th>
@@ -837,7 +843,7 @@ $selected_place = '';
                         // *** Show extra columns before a person in index places ***
                         if ($list["index_list"] == 'places') {
                             if ($selected_place != $personDb->place_order) {
-                                echo '<td colspan="7"><b>' . $directionMarkers->dirmark2 . $personDb->place_order . '</b></td></tr><tr>';
+                                echo '<td colspan="10"><b>' . $directionMarkers->dirmark2 . $personDb->place_order . '</b></td></tr><tr>';
                                 //$list["show_place"] = $personDb->place_order;
                             } else {
                                 //$list["show_place"] = '';
@@ -1029,6 +1035,35 @@ $selected_place = '';
                             ?>
                         </td>
 
+                        <td colspan="2">
+                            <?php
+                            // *** Show both parents in one cell, separated by their relation symbol ***
+                            $parent_names = [];
+                            $parent_relation_short = __('&amp;');
+                            if (!empty($personDb->parent_relation_id)) {
+                                $parents_familyDb = $db_functions->get_family_with_id($personDb->parent_relation_id);
+                                if ($parents_familyDb && ($parents_familyDb->fam_marr_date || $parents_familyDb->fam_marr_place || $parents_familyDb->fam_marr_church_date || $parents_familyDb->fam_marr_church_place || $parents_familyDb->fam_kind == 'civil')) {
+                                    $parent_relation_short = __('X');
+                                }
+                                if ($parents_familyDb && ($parents_familyDb->fam_div_date || $parents_familyDb->fam_div_place)) {
+                                    $parent_relation_short = __(') (');
+                                }
+
+                                foreach ($parents_familyDb ? [$parents_familyDb->partner1_id, $parents_familyDb->partner2_id] : [] as $parent_id) {
+                                    if ($parent_id) {
+                                        $parentDb = $db_functions->get_person_with_id($parent_id);
+                                        $parent_privacy = $personPrivacy->get_privacy($parentDb);
+                                        $parent_name = $personName->get_person_name($parentDb, $parent_privacy);
+                                        if ($parent_name['show_name']) {
+                                            $parent_names[] = $parent_name['standard_name'] . $parent_name['colour_mark'];
+                                        }
+                                    }
+                                }
+                            }
+                            echo implode(' ' . $parent_relation_short . ' ', $parent_names);
+                            ?>
+                        </td>
+
                         <td style="white-space:nowrap;">
                             <?php
                             $info = '';
@@ -1091,6 +1126,16 @@ $selected_place = '';
                             }
                             ?>
                             <?= $info; ?>
+                        </td>
+
+                        <td>
+                            <?php
+                            // *** Show the first residence city/country value ***
+                            if (!$privacy && $user['group_living_place'] == 'j') {
+                                $residences = $db_functions->get_addresses('person', 'person_address', $personDb->pers_gedcomnumber);
+                                echo !empty($residences) ? $residences[0]->address_place : '';
+                            }
+                            ?>
                         </td>
 
                         <?php
