@@ -606,7 +606,8 @@ $selected_place = '';
             <th colspan="2"><?= __('Parents'); ?></th>
             <th colspan="2" width="250px"><?= ucfirst(__('born')) . '/ ' . ucfirst(__('baptised')); ?></th>
             <th colspan="2" width="250px"><?= ucfirst(__('died')) . '/ ' . ucfirst(__('buried')); ?></th>
-            <th><?= __('Residence city & country'); ?></th>
+            <th><?= __('Address'); ?></th>
+            <th><?= __('Phone'); ?></th>
             <?php if ($select_trees == 'all_trees' or $select_trees == 'all_but_this') {
                 echo '<th>' . __('Family tree') . '</th>';
             } ?>
@@ -734,6 +735,7 @@ $selected_place = '';
                 </th>
 
                 <th><br></th>
+                <th><br></th>
 
                 <?php if ($select_trees == 'all_trees' or $select_trees == 'all_but_this') { ?>
                     <th><br></th>
@@ -843,7 +845,7 @@ $selected_place = '';
                         // *** Show extra columns before a person in index places ***
                         if ($list["index_list"] == 'places') {
                             if ($selected_place != $personDb->place_order) {
-                                echo '<td colspan="10"><b>' . $directionMarkers->dirmark2 . $personDb->place_order . '</b></td></tr><tr>';
+                                echo '<td colspan="11"><b>' . $directionMarkers->dirmark2 . $personDb->place_order . '</b></td></tr><tr>';
                                 //$list["show_place"] = $personDb->place_order;
                             } else {
                                 //$list["show_place"] = '';
@@ -1130,12 +1132,17 @@ $selected_place = '';
 
                         <td>
                             <?php
-                            // *** Show the first residence city/country value ***
+                            // *** Show the first residence address and phone number ***
+                            $residences = [];
                             if (!$privacy && $user['group_living_place'] == 'j') {
                                 $residences = $db_functions->get_addresses('person', 'person_address', $personDb->pers_gedcomnumber);
-                                echo !empty($residences) ? $residences[0]->address_place : '';
+                                echo !empty($residences) ? $residences[0]->address_address : '';
                             }
                             ?>
+                        </td>
+
+                        <td>
+                            <?= (!$privacy && $user['group_living_place'] == 'j' && !empty($residences)) ? $residences[0]->address_phone : ''; ?>
                         </td>
 
                         <?php
