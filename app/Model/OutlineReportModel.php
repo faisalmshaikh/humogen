@@ -146,7 +146,7 @@ class OutlineReportModel extends FamilyModel
             $parent2Db = $swap_parent1_parent2 ? $person_manDb : $person_womanDb;
             $parent2Privacy = $swap_parent1_parent2 ? $privacy_man : $privacy_woman;
             if (!$totallyFilterPerson->isTotallyFiltered($this->user, $parent2Db)) {
-                $this->appendPersonRow($parent2Db, $parent2Privacy, $generation_number, $personName_extended, $languageDate);
+                $this->appendPersonRow($parent2Db, $parent2Privacy, $generation_number, $personName_extended, $languageDate, false);
             }
 
             // *** Show children ***
@@ -191,7 +191,7 @@ class OutlineReportModel extends FamilyModel
         return $this->html_output;
     }
 
-    private function appendPersonRow($personDb, $privacy, int $generation, $personName_extended, $languageDate): void
+    private function appendPersonRow($personDb, $privacy, int $generation, $personName_extended, $languageDate, bool $showGeneration = true): void
     {
         if (!$personDb || $this->isPersonHidden($personDb)) {
             return;
@@ -202,9 +202,10 @@ class OutlineReportModel extends FamilyModel
         $deathDate = $privacy || $this->show_date != '1' ? '' : $languageDate->language_date($personDb->pers_death_date);
         $contact = $this->getContactFields($personDb, $privacy);
         $indent = max(0, ($generation - 1) * 20);
+        $generationMarker = $showGeneration ? $generation : 'x';
 
         $this->html_output .= '<tr>'
-            . '<td style="padding-inline-start: ' . $indent . 'px;"><span class="generation-number">' . $generation . '</span> ' . $name . '</td>'
+            . '<td style="padding-inline-start: ' . $indent . 'px;"><span class="generation-number">' . $generationMarker . '</span> ' . $name . '</td>'
             . '<td>' . htmlspecialchars($personDb->pers_gedcomnumber ?? '', ENT_QUOTES, 'UTF-8') . '</td>'
             . '<td>' . htmlspecialchars($birthDate, ENT_QUOTES, 'UTF-8') . '</td>'
             . '<td>' . htmlspecialchars($deathDate, ENT_QUOTES, 'UTF-8') . '</td>'
