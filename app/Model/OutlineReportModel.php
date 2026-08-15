@@ -203,13 +203,13 @@ class OutlineReportModel extends FamilyModel
         $contact = $this->getContactFields($personDb, $privacy);
         $indent = max(0, ($generation - 1) * 20);
         $generationMarker = $showGeneration ? $generation : 'x';
-        $birthDateStyle = $personDb->pers_alive == 'alive' && empty($personDb->pers_birth_date)
+        $birthDateStyle = $personDb->pers_alive != 'deceased' && empty($personDb->pers_birth_date)
             ? ' style="background-color:#ffffa0;"'
             : '';
         $calculateDates = new \Genealogy\Include\CalculateDates;
         $birthYear = $calculateDates->search_year($personDb->pers_birth_date);
         $age = $birthYear ? ((int) date('Y') - (int) $birthYear) : null;
-        $phoneStyle = $personDb->pers_alive == 'alive' && $age !== null && $age > 20 && empty($contact['phone'])
+        $phoneStyle = $personDb->pers_alive !=  'deceased' && $age !== null && $age > 20 && empty($contact['phone'])
             ? ' style="background-color:#ffffa0;"'
             : '';
 
