@@ -124,7 +124,7 @@ class OutlineReportModel extends FamilyModel
             $privacy_woman = $personPrivacy->get_privacy($person_womanDb);
 
             if ($generation_number === 1 && $family_nr === 1) {
-                $this->html_output .= '<table class="table table-sm outline-report-table"><thead><tr>'
+                $this->html_output .= '<table id="outline-report-table" class="table table-sm outline-report-table"><thead><tr>'
                     . '<th>' . __('Generation / Name') . '</th>'
                     . '<th>' . __('GEDCOM number') . '</th>'
                     . '<th>' . __('Birth date') . '</th>'

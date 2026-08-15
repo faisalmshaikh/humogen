@@ -125,7 +125,45 @@ echo $data["descendant_header"];
         }
     }
     ?>
-</div><br>
+</div>
+
+<div class="d-print-none mb-3">
+    <button type="button" class="btn btn-sm btn-success" onclick="submitOutlineReportToGoogleSheets()">
+        <?= __('Submit Changes'); ?>
+    </button>
+    <span id="outline-report-sheet-status" class="ms-2" role="status"></span>
+</div>
+
+<script>
+    function submitOutlineReportToGoogleSheets() {
+        const table = document.getElementById('outline-report-table');
+        const status = document.getElementById('outline-report-sheet-status');
+
+        if (!table) {
+            status.textContent = <?= json_encode(__('The report table is not available.')); ?>;
+            return;
+        }
+
+        const rows = Array.from(table.querySelectorAll('tr')).map(row =>
+            Array.from(row.querySelectorAll('th, td'))
+                .map(cell => cell.innerText.replace(/\s+/g, ' ').trim())
+                .join('\t')
+        ).join('\n');
+
+        const sheetWindow = window.open('https://sheets.new', '_blank', 'noopener');
+        if (!sheetWindow) {
+            status.textContent = <?= json_encode(__('Please allow pop-ups to open Google Sheets.')); ?>;
+            return;
+        }
+
+        navigator.clipboard.writeText(rows).then(() => {
+            status.textContent = <?= json_encode(__('Report copied. Paste it into the new Google Sheet.')); ?>;
+        }).catch(() => {
+            status.textContent = <?= json_encode(__('Google Sheet opened, but the report could not be copied automatically.')); ?>;
+        });
+    }
+</script>
+<br>
 
 <!-- Show outline report HTML -->
 <?= $data["outline_report_html"]; ?>
