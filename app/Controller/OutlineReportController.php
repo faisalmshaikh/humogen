@@ -7,7 +7,7 @@ use Genealogy\App\Model\OutlineReportModel;
 class OutlineReportController
 {
     private const GOOGLE_SHEET_ID = '1cWXGL0mCFcBtKpoY6S_TADk2mhtxF438WIXEIVMZTq0';
-    private const GOOGLE_SERVICE_ACCOUNT_FILE = '../../../../service-account.json';
+    private const GOOGLE_SERVICE_ACCOUNT_FILE = '/home/khandesh21at/public_html/familytree/app/Controller/service-account.json';
 
     private $config;
 
@@ -90,7 +90,8 @@ class OutlineReportController
                     if (!is_scalar($value)) {
                         throw new \RuntimeException('Invalid report cell.');
                     }
-                    return mb_substr((string) $value, 0, 2000);
+                    $text = (string) $value;
+                    return function_exists('mb_substr') ? mb_substr($text, 0, 2000) : substr($text, 0, 2000);
                 }, array_values($row));
             }
 
@@ -120,10 +121,14 @@ class OutlineReportController
 
             echo json_encode(['success' => true]);
         } catch (\Throwable $exception) {
+            error_log('Outline report Google Sheets submission failed: ' . $exception->getMessage());
             http_response_code(400);
+            $message = $exception instanceof \RuntimeException
+                ? $exception->getMessage()
+                : 'Google Sheets API request failed. Verify that the service account has Editor access to the spreadsheet and that the Google Sheets API is enabled.';
             echo json_encode([
                 'success' => false,
-                'message' => 'Unable to submit the report to Google Sheets.'
+                'message' => $message
             ]);
         }
     }
