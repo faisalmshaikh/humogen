@@ -212,6 +212,9 @@ class OutlineReportModel extends FamilyModel
         $phoneStyle = $personDb->pers_alive !=  'deceased' && $age !== null && $age > 20 && empty($contact['phone'])
             ? ' style="background-color:#ffffa0;"'
             : '';
+        $addressStyle = $personDb->pers_alive != 'deceased' && empty($contact['address'])
+            ? ' style="background-color:#ffffa0;"'
+            : '';
 
         $this->html_output .= '<tr>'
             . '<td style="padding-inline-start: ' . $indent . 'px;"><span class="generation-number">' . $generationMarker . '</span> ' . $name . '</td>'
@@ -219,7 +222,7 @@ class OutlineReportModel extends FamilyModel
             . '<td' . $birthDateStyle . '>' . htmlspecialchars($birthDate, ENT_QUOTES, 'UTF-8') . '</td>'
             . '<td>' . htmlspecialchars($deathDate, ENT_QUOTES, 'UTF-8') . '</td>'
             . '<td' . $phoneStyle . '>' . $contact['phone'] . '</td>'
-            . '<td>' . $contact['address'] . '</td>'
+            . '<td' . $addressStyle . '>' . $contact['address'] . '</td>'
             . '</tr>';
     }
 
