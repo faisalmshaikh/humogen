@@ -132,9 +132,6 @@ echo $data["descendant_header"];
     $outline_sheet_token = bin2hex(random_bytes(32));
     $_SESSION['outline_sheet_token'] = $outline_sheet_token;
     ?>
-    <button type="button" id="outline-report-edit" class="btn btn-sm btn-secondary" onclick="toggleOutlineReportEditing()">
-        <?= __('Edit'); ?>
-    </button>
     <button type="button" class="btn btn-sm btn-success" onclick="submitOutlineReportToGoogleSheets()">
         <?= __('Submit Changes'); ?>
     </button>
@@ -143,31 +140,23 @@ echo $data["descendant_header"];
 
 <script>
     const outlineReportEditableColumns = [0, 2, 3, 4, 5];
-    let outlineReportEditing = false;
 
-    function toggleOutlineReportEditing() {
+    document.addEventListener('DOMContentLoaded', () => {
         const table = document.getElementById('outline-report-table');
-        const editButton = document.getElementById('outline-report-edit');
-        const status = document.getElementById('outline-report-sheet-status');
-        if (!table) {
-            status.textContent = <?= json_encode(__('The report table is not available.')); ?>;
-            return;
-        }
+        if (!table) return;
 
-        outlineReportEditing = !outlineReportEditing;
         table.querySelectorAll('tbody tr').forEach(row => {
             const cells = row.querySelectorAll('td');
             if (cells.length !== 6) return;
+
             outlineReportEditableColumns.forEach(column => {
-                cells[column].contentEditable = outlineReportEditing ? 'true' : 'false';
-                cells[column].classList.toggle('outline-report-editable', outlineReportEditing);
+                cells[column].addEventListener('click', () => {
+                    cells[column].contentEditable = 'true';
+                    cells[column].classList.add('outline-report-editable');
+                });
             });
         });
-        editButton.setAttribute('aria-pressed', outlineReportEditing ? 'true' : 'false');
-        status.textContent = outlineReportEditing
-            ? <?= json_encode(__('Report editing enabled.')); ?>
-            : <?= json_encode(__('Report editing disabled.')); ?>;
-    }
+    });
 
     function outlineReportRowValues(row) {
         return Array.from(row.querySelectorAll('th, td'))
@@ -206,7 +195,7 @@ echo $data["descendant_header"];
             body: JSON.stringify({rows: rows})
         }).then(response => response.json()).then(result => {
             status.textContent = result.success
-                ? <?= json_encode(__('Report submitted to Google Sheets.')); ?>
+                ? <?= json_encode(__('Report submitted for Review. Once approved, the changes you submitted will be reflected in the family tree.')); ?>
                 : (result.message || <?= json_encode(__('Unable to submit the report to Google Sheets.')); ?>);
         }).catch(() => {
             status.textContent = <?= json_encode(__('Unable to submit the report to Google Sheets.')); ?>;

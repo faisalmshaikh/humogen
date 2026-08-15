@@ -7,7 +7,7 @@ use Genealogy\App\Model\OutlineReportModel;
 class OutlineReportController
 {
     private const GOOGLE_SHEET_ID = '1cWXGL0mCFcBtKpoY6S_TADk2mhtxF438WIXEIVMZTq0';
-    private const GOOGLE_SERVICE_ACCOUNT_FILE = '/home/khandesh21at/public_html/familytree/app/Controller/service-account.json';
+    private const GOOGLE_SERVICE_ACCOUNT_FILE = __DIR__ . '/../../../../service-account.json';
 
     private $config;
 
