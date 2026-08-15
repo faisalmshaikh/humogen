@@ -305,6 +305,10 @@ if ($index['page'] == 'address') {
     exit; // Skip layout.php
 } elseif ($index['page'] == 'outline_report') {
     $controllerObj = new Genealogy\App\Controller\OutlineReportController($config);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['google_sheet'])) {
+        $controllerObj->submitToGoogleSheet();
+        exit;
+    }
     $data = $controllerObj->getOutlineReport();
 } elseif ($index['page'] == 'user_settings') {
     // TODO refactor

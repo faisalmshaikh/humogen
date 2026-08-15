@@ -128,6 +128,13 @@ echo $data["descendant_header"];
 </div>
 
 <div class="d-print-none mb-3">
+    <?php
+    $outline_sheet_token = bin2hex(random_bytes(32));
+    $_SESSION['outline_sheet_token'] = $outline_sheet_token;
+    ?>
+    <button type="button" id="outline-report-edit" class="btn btn-sm btn-secondary" onclick="toggleOutlineReportEditing()">
+        <?= __('Edit'); ?>
+    </button>
     <button type="button" class="btn btn-sm btn-success" onclick="submitOutlineReportToGoogleSheets()">
         <?= __('Submit Changes'); ?>
     </button>
@@ -135,6 +142,38 @@ echo $data["descendant_header"];
 </div>
 
 <script>
+    const outlineReportEditableColumns = [0, 2, 3, 4, 5];
+    let outlineReportEditing = false;
+
+    function toggleOutlineReportEditing() {
+        const table = document.getElementById('outline-report-table');
+        const editButton = document.getElementById('outline-report-edit');
+        const status = document.getElementById('outline-report-sheet-status');
+        if (!table) {
+            status.textContent = <?= json_encode(__('The report table is not available.')); ?>;
+            return;
+        }
+
+        outlineReportEditing = !outlineReportEditing;
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length !== 6) return;
+            outlineReportEditableColumns.forEach(column => {
+                cells[column].contentEditable = outlineReportEditing ? 'true' : 'false';
+                cells[column].classList.toggle('outline-report-editable', outlineReportEditing);
+            });
+        });
+        editButton.setAttribute('aria-pressed', outlineReportEditing ? 'true' : 'false');
+        status.textContent = outlineReportEditing
+            ? <?= json_encode(__('Report editing enabled.')); ?>
+            : <?= json_encode(__('Report editing disabled.')); ?>;
+    }
+
+    function outlineReportRowValues(row) {
+        return Array.from(row.querySelectorAll('th, td'))
+            .map(cell => cell.innerText.replace(/\s+/g, ' ').trim());
+    }
+
     function submitOutlineReportToGoogleSheets() {
         const table = document.getElementById('outline-report-table');
         const status = document.getElementById('outline-report-sheet-status');
@@ -144,22 +183,33 @@ echo $data["descendant_header"];
             return;
         }
 
-        const rows = Array.from(table.querySelectorAll('tr')).map(row =>
-            Array.from(row.querySelectorAll('th, td'))
-                .map(cell => cell.innerText.replace(/\s+/g, ' ').trim())
-                .join('\t')
-        ).join('\n');
+        const header = table.querySelector('thead tr');
+        const rows = header ? [outlineReportRowValues(header)] : [];
+        table.querySelectorAll('tbody tr').forEach(row => {
+            if (row.querySelectorAll('td').length === 6) {
+                rows.push(outlineReportRowValues(row));
+            }
+        });
 
-        const sheetWindow = window.open('https://sheets.new', '_blank', 'noopener');
-        if (!sheetWindow) {
-            status.textContent = <?= json_encode(__('Please allow pop-ups to open Google Sheets.')); ?>;
-            return;
-        }
+        const endpoint = new URL(window.location.href);
+        endpoint.searchParams.set('google_sheet', '1');
+        status.textContent = <?= json_encode(__('Submitting report to Google Sheets...')); ?>;
 
-        navigator.clipboard.writeText(rows).then(() => {
-            status.textContent = <?= json_encode(__('Report copied. Paste it into the new Google Sheet.')); ?>;
+        fetch(endpoint.toString(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Outline-Sheet-Token': <?= json_encode($outline_sheet_token); ?>
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({rows: rows})
+        }).then(response => response.json()).then(result => {
+            status.textContent = result.success
+                ? <?= json_encode(__('Report submitted to Google Sheets.')); ?>
+                : (result.message || <?= json_encode(__('Unable to submit the report to Google Sheets.')); ?>);
         }).catch(() => {
-            status.textContent = <?= json_encode(__('Google Sheet opened, but the report could not be copied automatically.')); ?>;
+            status.textContent = <?= json_encode(__('Unable to submit the report to Google Sheets.')); ?>;
         });
     }
 </script>

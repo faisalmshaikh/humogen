@@ -6,6 +6,9 @@ use Genealogy\App\Model\OutlineReportModel;
 
 class OutlineReportController
 {
+    private const GOOGLE_SHEET_ID = '1cWXGL0mCFcBtKpoY6S_TADk2mhtxF438WIXEIVMZTq0';
+    private const GOOGLE_SERVICE_ACCOUNT_FILE = '../../../../service-account.json';
+
     private $config;
 
     public function __construct($config)
@@ -58,5 +61,70 @@ class OutlineReportController
 
             "title" => __('Family')
         );
+    }
+
+    public function submitToGoogleSheet(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $requestToken = $_SERVER['HTTP_X_OUTLINE_SHEET_TOKEN'] ?? '';
+            $sessionToken = $_SESSION['outline_sheet_token'] ?? '';
+            if (!$requestToken || !$sessionToken || !hash_equals($sessionToken, $requestToken)) {
+                throw new \RuntimeException('Invalid report submission request.');
+            }
+
+            $payload = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
+            $rows = $payload['rows'] ?? null;
+            if (!is_array($rows) || count($rows) === 0 || count($rows) > 5000) {
+                throw new \RuntimeException('Invalid report data.');
+            }
+
+            $values = [];
+            foreach ($rows as $row) {
+                if (!is_array($row) || count($row) !== 6) {
+                    throw new \RuntimeException('Invalid report row.');
+                }
+
+                $values[] = array_map(static function ($value): string {
+                    if (!is_scalar($value)) {
+                        throw new \RuntimeException('Invalid report cell.');
+                    }
+                    return mb_substr((string) $value, 0, 2000);
+                }, array_values($row));
+            }
+
+            $credentialsFile = getenv('HUMOGEN_GOOGLE_SERVICE_ACCOUNT') ?: self::GOOGLE_SERVICE_ACCOUNT_FILE;
+            if (!is_readable($credentialsFile)) {
+                throw new \RuntimeException('Google service-account credentials are unavailable.');
+            }
+
+            $client = new \Google\Client();
+            $client->setApplicationName('HuMo-genealogy Outline Report');
+            $client->setAuthConfig($credentialsFile);
+            $client->setScopes([\Google\Service\Sheets::SPREADSHEETS]);
+
+            $sheets = new \Google\Service\Sheets($client);
+            $sheets->spreadsheets_values->clear(
+                self::GOOGLE_SHEET_ID,
+                'A:Z',
+                new \Google\Service\Sheets\ClearValuesRequest()
+            );
+            $body = new \Google\Service\Sheets\ValueRange(['values' => $values]);
+            $sheets->spreadsheets_values->update(
+                self::GOOGLE_SHEET_ID,
+                'A1',
+                $body,
+                ['valueInputOption' => 'USER_ENTERED']
+            );
+
+            echo json_encode(['success' => true]);
+        } catch (\Throwable $exception) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unable to submit the report to Google Sheets.'
+            ]);
+        }
     }
 }

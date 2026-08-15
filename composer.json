@@ -1,6 +1,12 @@
 {
     "require": {
-        "phpmailer/phpmailer": "^6.9"
+        "phpmailer/phpmailer": "^6.9",
+        "google/apiclient": "^2.19"
+    },
+    "extra": {
+        "google/apiclient-services": [
+            "Sheets"
+        ]
     },
     "autoload": {
         "psr-4": {
@@ -13,5 +19,8 @@
             "include/",
             "include/tfpdf/"
         ]
+    },
+    "config": {
+        "process-timeout": 0
     }
 }
