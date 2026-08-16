@@ -192,7 +192,11 @@ echo $data["descendant_header"];
                 'X-Outline-Sheet-Token': <?= json_encode($outline_sheet_token); ?>
             },
             credentials: 'same-origin',
-            body: JSON.stringify({rows: rows})
+            body: JSON.stringify({
+                rows: rows,
+                mainPerson: <?= json_encode($data['main_person']); ?>,
+                nrGenerations: <?= json_encode((int) $data['nr_generations']); ?>
+            })
         }).then(response => response.json()).then(result => {
             status.textContent = result.success
                 ? <?= json_encode(__('Report submitted for Review. Once approved, the changes you submitted will be reflected in the family tree.')); ?>

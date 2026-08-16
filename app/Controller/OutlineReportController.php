@@ -76,9 +76,18 @@ class OutlineReportController
 
             $payload = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
             $rows = $payload['rows'] ?? null;
+            $mainPerson = $payload['mainPerson'] ?? '';
+            $nrGenerations = $payload['nrGenerations'] ?? null;
             if (!is_array($rows) || count($rows) === 0 || count($rows) > 5000) {
                 throw new \RuntimeException('Invalid report data.');
             }
+            if (!is_string($mainPerson) || !preg_match('/^[A-Za-z0-9_-]+$/', $mainPerson)) {
+                throw new \RuntimeException('Invalid main person.');
+            }
+            if (filter_var($nrGenerations, FILTER_VALIDATE_INT) === false || (int) $nrGenerations < 1) {
+                throw new \RuntimeException('Invalid number of generations.');
+            }
+            $worksheetTitle = $mainPerson . '_' . (int) $nrGenerations;
 
             $values = [];
             foreach ($rows as $row) {
@@ -106,20 +115,48 @@ class OutlineReportController
             $client->setScopes([\Google\Service\Sheets::SPREADSHEETS]);
 
             $sheets = new \Google\Service\Sheets($client);
+            $spreadsheet = $sheets->spreadsheets->get(self::GOOGLE_SHEET_ID, [
+                'fields' => 'sheets(properties(sheetId,title))'
+            ]);
+            $worksheetExists = false;
+            foreach ($spreadsheet->getSheets() as $sheet) {
+                if ($sheet->getProperties()->getTitle() === $worksheetTitle) {
+                    $worksheetExists = true;
+                    break;
+                }
+            }
+
+            if (!$worksheetExists) {
+                $addSheetRequest = new \Google\Service\Sheets\Request([
+                    'addSheet' => new \Google\Service\Sheets\AddSheetRequest([
+                        'properties' => new \Google\Service\Sheets\SheetProperties([
+                            'title' => $worksheetTitle
+                        ])
+                    ])
+                ]);
+                $sheets->spreadsheets->batchUpdate(
+                    self::GOOGLE_SHEET_ID,
+                    new \Google\Service\Sheets\BatchUpdateSpreadsheetRequest([
+                        'requests' => [$addSheetRequest]
+                    ])
+                );
+            }
+
+            $worksheetRange = "'" . str_replace("'", "''", $worksheetTitle) . "'!A:Z";
             $sheets->spreadsheets_values->clear(
                 self::GOOGLE_SHEET_ID,
-                'A:Z',
+                $worksheetRange,
                 new \Google\Service\Sheets\ClearValuesRequest()
             );
             $body = new \Google\Service\Sheets\ValueRange(['values' => $values]);
             $sheets->spreadsheets_values->update(
                 self::GOOGLE_SHEET_ID,
-                'A1',
+                "'" . str_replace("'", "''", $worksheetTitle) . "'!A1",
                 $body,
                 ['valueInputOption' => 'USER_ENTERED']
             );
 
-            echo json_encode(['success' => true]);
+            echo json_encode(['success' => true, 'worksheet' => $worksheetTitle]);
         } catch (\Throwable $exception) {
             error_log('Outline report Google Sheets submission failed: ' . $exception->getMessage());
             http_response_code(400);
