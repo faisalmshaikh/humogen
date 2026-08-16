@@ -150,7 +150,7 @@ echo $data["descendant_header"];
             if (cells.length !== 6) return;
 
             outlineReportEditableColumns.forEach(column => {
-                cells[column].addEventListener('click', () => {
+                cells[column].addEventListener('dblclick', () => {
                     cells[column].contentEditable = 'true';
                     cells[column].classList.add('outline-report-editable');
                 });
