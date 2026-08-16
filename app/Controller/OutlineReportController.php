@@ -4,9 +4,12 @@ namespace Genealogy\App\Controller;
 
 use Genealogy\App\Model\OutlineReportModel;
 
+define("GOOGLE_SHEET_ID", $GOOGLE_SHEET_ID);
+
 class OutlineReportController
 {
-    private const GOOGLE_SHEET_ID = '1cWXGL0mCFcBtKpoY6S_TADk2mhtxF438WIXEIVMZTq0';
+    //private const GOOGLE_SHEET_ID = '1cWXGL0mCFcBtKpoY6S_TADk2mhtxF438WIXEIVMZTq0';
+
     private const GOOGLE_SERVICE_ACCOUNT_FILE = __DIR__ . '/../../../../service-account.json';
 
     private $config;
@@ -78,16 +81,20 @@ class OutlineReportController
             $rows = $payload['rows'] ?? null;
             $mainPerson = $payload['mainPerson'] ?? '';
             $nrGenerations = $payload['nrGenerations'] ?? null;
+            $sessionUserName = $_SESSION['user_name'] ?? '';
             if (!is_array($rows) || count($rows) === 0 || count($rows) > 5000) {
                 throw new \RuntimeException('Invalid report data.');
             }
             if (!is_string($mainPerson) || !preg_match('/^[A-Za-z0-9_-]+$/', $mainPerson)) {
                 throw new \RuntimeException('Invalid main person.');
             }
+            if (!is_string($sessionUserName) || !preg_match('/^[A-Za-z0-9_-]+$/', $sessionUserName)) {
+                throw new \RuntimeException('Invalid session user.');
+            }
             if (filter_var($nrGenerations, FILTER_VALIDATE_INT) === false || (int) $nrGenerations < 1) {
                 throw new \RuntimeException('Invalid number of generations.');
             }
-            $worksheetTitle = $mainPerson . '_' . (int) $nrGenerations;
+            $worksheetTitle = $sessionUserName . '_' . $mainPerson . '_' . (int) $nrGenerations;
 
             $values = [];
             foreach ($rows as $row) {
@@ -115,7 +122,7 @@ class OutlineReportController
             $client->setScopes([\Google\Service\Sheets::SPREADSHEETS]);
 
             $sheets = new \Google\Service\Sheets($client);
-            $spreadsheet = $sheets->spreadsheets->get(self::GOOGLE_SHEET_ID, [
+            $spreadsheet = $sheets->spreadsheets->get(GOOGLE_SHEET_ID, [
                 'fields' => 'sheets(properties(sheetId,title))'
             ]);
             $worksheetExists = false;
@@ -135,7 +142,7 @@ class OutlineReportController
                     ])
                 ]);
                 $sheets->spreadsheets->batchUpdate(
-                    self::GOOGLE_SHEET_ID,
+                    GOOGLE_SHEET_ID,
                     new \Google\Service\Sheets\BatchUpdateSpreadsheetRequest([
                         'requests' => [$addSheetRequest]
                     ])
@@ -144,13 +151,13 @@ class OutlineReportController
 
             $worksheetRange = "'" . str_replace("'", "''", $worksheetTitle) . "'!A:Z";
             $sheets->spreadsheets_values->clear(
-                self::GOOGLE_SHEET_ID,
+                GOOGLE_SHEET_ID,
                 $worksheetRange,
                 new \Google\Service\Sheets\ClearValuesRequest()
             );
             $body = new \Google\Service\Sheets\ValueRange(['values' => $values]);
             $sheets->spreadsheets_values->update(
-                self::GOOGLE_SHEET_ID,
+                GOOGLE_SHEET_ID,
                 "'" . str_replace("'", "''", $worksheetTitle) . "'!A1",
                 $body,
                 ['valueInputOption' => 'USER_ENTERED']
