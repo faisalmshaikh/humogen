@@ -165,7 +165,17 @@ class OutlineReportController
 
             echo json_encode(['success' => true, 'worksheet' => $worksheetTitle]);
         } catch (\Throwable $exception) {
-            error_log('Outline report Google Sheets submission failed: ' . $exception->getMessage());
+            error_log('Outline report Google Sheets submission failed');
+            error_log('Exception: ' . get_class($exception));
+            error_log('Message: ' . $exception->getMessage());
+            error_log('File: ' . $exception->getFile());
+            error_log('Line: ' . $exception->getLine());
+
+            if ($exception instanceof \Google\Service\Exception) {
+                error_log('Google API errors: ' . json_encode($exception->getErrors()));
+                error_log('HTTP code: ' . $exception->getCode());
+            }
+
             http_response_code(400);
             $message = $exception instanceof \RuntimeException
                 ? $exception->getMessage()
