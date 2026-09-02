@@ -4,6 +4,8 @@ namespace Genealogy\App\Controller;
 
 use Genealogy\App\Model\OutlineReportModel;
 
+global $GOOGLE_SHEET_ID;
+
 define("GOOGLE_SHEET_ID", $GOOGLE_SHEET_ID);
 
 class OutlineReportController
