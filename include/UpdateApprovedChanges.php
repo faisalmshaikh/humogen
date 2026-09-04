@@ -130,7 +130,7 @@ function updateApprovedChangesEvent(
 function findApprovedChangesAddress(PDO $pdo, int $treeId, string $gedcomNumber): ?array
 {
     $statement = $pdo->prepare(
-        "SELECT a.address_id, a.address_phone
+        "SELECT a.address_id, a.address_gedcomnr, a.address_phone, a.address_address
          FROM humo_addresses a
          LEFT JOIN humo_connections c
            ON c.connect_tree_id = a.address_tree_id
@@ -157,6 +157,129 @@ function findApprovedChangesAddress(PDO $pdo, int $treeId, string $gedcomNumber)
     return $address ?: null;
 }
 
+/**
+ * Update the first person address, or create and connect one when none exists.
+ * Only values supplied by the worksheet are written.
+ */
+function upsertApprovedChangesAddress(
+    PDO $pdo,
+    int $treeId,
+    string $gedcomNumber,
+    ?string $addressText,
+    ?string $phone
+): bool {
+    $address = findApprovedChangesAddress($pdo, $treeId, $gedcomNumber);
+
+    if ($address) {
+        $updates = [];
+        $parameters = [':address_id' => $address['address_id']];
+        if ($addressText !== null && $addressText !== $address['address_address']) {
+            $updates[] = 'address_address = :address';
+            $parameters[':address'] = $addressText;
+        }
+        if ($phone !== null && $phone !== $address['address_phone']) {
+            $updates[] = 'address_phone = :phone';
+            $parameters[':phone'] = $phone;
+        }
+        if (!$updates) {
+            return false;
+        }
+
+        $statement = $pdo->prepare(
+            'UPDATE humo_addresses SET ' . implode(', ', $updates) .
+            ' WHERE address_id = :address_id'
+        );
+        $statement->execute($parameters);
+        return $statement->rowCount() > 0;
+    }
+
+    $numberStatement = $pdo->prepare(
+        "SELECT address_gedcomnr
+         FROM humo_addresses
+         WHERE address_tree_id = :tree_id"
+    );
+    $numberStatement->execute([':tree_id' => $treeId]);
+    $nextNumber = 0;
+    foreach ($numberStatement->fetchAll(PDO::FETCH_COLUMN) as $existingNumber) {
+        $numericPart = (int) preg_replace('/\D/', '', (string) $existingNumber);
+        $nextNumber = max($nextNumber, $numericPart);
+    }
+    $addressGedcomNumber = 'R' . ($nextNumber + 1);
+
+    $insert = $pdo->prepare(
+        "INSERT INTO humo_addresses (
+            address_tree_id,
+            address_gedcomnr,
+            address_connect_kind,
+            address_connect_sub_kind,
+            address_connect_id,
+            address_address,
+            address_phone
+         ) VALUES (
+            :tree_id, :address_gedcomnr, 'person', 'person', :gedcom_number,
+            :address, :phone
+         )"
+    );
+    $insert->execute([
+        ':tree_id' => $treeId,
+        ':address_gedcomnr' => $addressGedcomNumber,
+        ':gedcom_number' => $gedcomNumber,
+        ':address' => $addressText,
+        ':phone' => $phone,
+    ]);
+
+    $connection = $pdo->prepare(
+        "INSERT INTO humo_connections (
+            connect_tree_id,
+            connect_kind,
+            connect_sub_kind,
+            connect_connect_id,
+            connect_item_id
+         ) VALUES (:tree_id, 'person', 'person_address', :gedcom_number, :address_gedcomnr)"
+    );
+    $connection->execute([
+        ':tree_id' => $treeId,
+        ':gedcom_number' => $gedcomNumber,
+        ':address_gedcomnr' => $addressGedcomNumber,
+    ]);
+
+    return true;
+}
+
+/**
+ * Delete processed worksheet rows. Rows are deleted from bottom to top so
+ * earlier row numbers remain valid after each deletion.
+ */
+function deleteApprovedChangesRows(
+    Google\Service\Sheets $service,
+    string $spreadsheetId,
+    int $sheetId,
+    array $rowNumbers
+): void {
+    $requests = [];
+    rsort($rowNumbers, SORT_NUMERIC);
+    foreach ($rowNumbers as $rowNumber) {
+        $dimension = new Google\Service\Sheets\DimensionRange();
+        $dimension->setSheetId($sheetId);
+        $dimension->setDimension('ROWS');
+        $dimension->setStartIndex($rowNumber - 1);
+        $dimension->setEndIndex($rowNumber);
+
+        $delete = new Google\Service\Sheets\DeleteDimensionRequest();
+        $delete->setRange($dimension);
+
+        $request = new Google\Service\Sheets\Request();
+        $request->setDeleteDimension($delete);
+        $requests[] = $request;
+    }
+
+    if ($requests) {
+        $batch = new Google\Service\Sheets\BatchUpdateSpreadsheetRequest();
+        $batch->setRequests($requests);
+        $service->spreadsheets->batchUpdate($spreadsheetId, $batch);
+    }
+}
+
 try {
     if (!isset($dbh) || !$dbh instanceof PDO) {
         throw new RuntimeException('The HuMo database connection was not initialized.');
@@ -167,7 +290,7 @@ try {
     }
 
     $credentialsFile = getenv('HUMOGEN_GOOGLE_SERVICE_ACCOUNT')
-        ?: __DIR__ . '/../../../../service-account.json';
+        ?: __DIR__ . '/../../../service-account.json';
     if (!is_readable($credentialsFile)) {
         throw new RuntimeException('Google service-account credentials are unavailable.');
     }
@@ -175,9 +298,22 @@ try {
     $client = new Google\Client();
     $client->setApplicationName('HuMo-genealogy Approved Changes');
     $client->setAuthConfig($credentialsFile);
-    $client->setScopes([Google\Service\Sheets::SPREADSHEETS_READONLY]);
+    $client->setScopes([Google\Service\Sheets::SPREADSHEETS]);
 
     $service = new Google\Service\Sheets($client);
+    $spreadsheet = $service->spreadsheets->get($GOOGLE_SHEET_ID, [
+        'fields' => 'sheets(properties(sheetId,title))',
+    ]);
+    $sheetId = null;
+    foreach ($spreadsheet->getSheets() as $sheet) {
+        if ($sheet->getProperties()->getTitle() === APPROVED_CHANGES_WORKSHEET) {
+            $sheetId = (int) $sheet->getProperties()->getSheetId();
+            break;
+        }
+    }
+    if ($sheetId === null) {
+        throw new RuntimeException('ApprovedChanges worksheet was not found.');
+    }
     $response = $service->spreadsheets_values->get($GOOGLE_SHEET_ID, APPROVED_CHANGES_RANGE);
     $sheetRows = $response->getValues() ?: [];
 
@@ -216,29 +352,8 @@ try {
          WHERE pers_gedcomnumber = :gedcom_number
          LIMIT 1"
     );
-    $phoneUpdate = $pdo->prepare(
-        "UPDATE humo_addresses
-         SET address_phone = :phone
-         WHERE address_id = :address_id
-           AND (address_phone IS NULL OR address_phone <> :comparison_phone)"
-    );
-    $phoneInsert = $pdo->prepare(
-        "INSERT INTO humo_addresses (
-            address_tree_id,
-            address_connect_kind,
-            address_connect_sub_kind,
-            address_connect_id,
-            address_phone
-         ) VALUES (
-            :tree_id,
-            'person',
-            'person',
-            :gedcom_number,
-            :phone
-         )"
-    );
-
     $seenGedcomNumbers = [];
+    $processedSheetRows = [];
     $updated = 0;
     $unchanged = 0;
     $skipped = 0;
@@ -288,27 +403,18 @@ try {
         }
 
         $phone = approvedChangesCell($row, $columnMap['phone']);
-        if ($phone !== '') {
-            $address = findApprovedChangesAddress($pdo, (int) $person['pers_tree_id'], $gedcomNumber);
-            if ($address) {
-                $phoneUpdate->execute([
-                    ':phone' => $phone,
-                    ':address_id' => $address['address_id'],
-                    ':comparison_phone' => $phone,
-                ]);
-                $rowChanged = $phoneUpdate->rowCount() > 0 || $rowChanged;
-            } else {
-                $phoneInsert->execute([
-                    ':tree_id' => (int) $person['pers_tree_id'],
-                    ':gedcom_number' => $gedcomNumber,
-                    ':phone' => $phone,
-                ]);
-                $rowChanged = true;
-            }
+        $addressText = approvedChangesCell($row, $columnMap['address']);
+        if ($phone !== '' || $addressText !== '') {
+            $rowChanged = upsertApprovedChangesAddress(
+                $pdo,
+                (int) $person['pers_tree_id'],
+                $gedcomNumber,
+                $addressText !== '' ? $addressText : null,
+                $phone !== '' ? $phone : null
+            ) || $rowChanged;
         }
 
-        // Address is intentionally not written yet, even when supplied.
-        approvedChangesCell($row, $columnMap['address']);
+        $processedSheetRows[] = $sheetRowNumber;
 
         if ($rowChanged) {
             $updated++;
@@ -318,6 +424,7 @@ try {
     }
 
     $pdo->commit();
+    deleteApprovedChangesRows($service, $GOOGLE_SHEET_ID, $sheetId, $processedSheetRows);
     echo sprintf(
         "Approved changes processed. Updated: %d, unchanged: %d, skipped: %d.\n",
         $updated,
