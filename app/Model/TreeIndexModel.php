@@ -131,6 +131,12 @@ class TreeIndexModel extends BaseModel
                     $temp .= $this->today_in_history($module_option_1[$i]);
                 }
 
+                // *** Summary of changes in the last month ***
+                if ($module_item[$i] == 'changes_last_month') {
+                    $header = __('Summary of changes in last month');
+                    $temp .= $this->changes_last_month();
+                }
+
                 // *** Alphabet line ***
                 if ($module_item[$i] == 'alphabet') {
                     //*** Find first first_character of last name ***
@@ -307,6 +313,49 @@ class TreeIndexModel extends BaseModel
         $showTreeDate = new ShowTreeDate();
 
         return __('Latest update:') . ' ' . $showTreeDate->show_tree_date($this->selectedFamilyTree->tree_date, true) . ', ' . $this->selectedFamilyTree->tree_persons . ' ' . __('persons') . ', ' . $this->selectedFamilyTree->tree_families . ' ' . __('families');
+    }
+
+    /**
+     * Return counts of records created or updated during the previous month.
+     */
+    public function changes_last_month(): string
+    {
+        $since = date('Y-m-d H:i:s', strtotime('-1 month'));
+        $tables = [
+            'Persons' => ['humo_persons', 'pers_tree_id', 'pers_new_datetime', 'pers_changed_datetime'],
+            'Marriages' => ['humo_families', 'fam_tree_id', 'fam_new_datetime', 'fam_changed_datetime'],
+            'Events' => ['humo_events', 'event_tree_id', 'event_new_datetime', 'event_changed_datetime'],
+            'Addresses' => ['humo_addresses', 'address_tree_id', 'address_new_datetime', 'address_changed_datetime'],
+        ];
+        $counts = ['new' => [], 'updates' => []];
+
+        foreach ($tables as $label => [$table, $treeColumn, $newColumn, $changedColumn]) {
+            $statement = $this->dbh->prepare(
+                "SELECT
+                    SUM(CASE WHEN {$newColumn} >= :since_new THEN 1 ELSE 0 END) AS new_count,
+                    SUM(CASE WHEN {$changedColumn} >= :since_changed THEN 1 ELSE 0 END) AS update_count
+                 FROM {$table}
+                 WHERE {$treeColumn} = :tree_id"
+            );
+            $statement->execute([
+                ':since_new' => $since,
+                ':since_changed' => $since,
+                ':tree_id' => $this->tree_id,
+            ]);
+            $result = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
+            $counts['new'][$label] = (int) ($result['new_count'] ?? 0);
+            $counts['updates'][$label] = (int) ($result['update_count'] ?? 0);
+        }
+
+        $text = '<table class="table table-sm table-striped mb-0">';
+        $text .= '<thead><tr><th>' . __('Type') . '</th><th>' . __('New') . '</th><th>' . __('Updates') . '</th></tr></thead><tbody>';
+        foreach ($tables as $label => $_) {
+            $text .= '<tr><th scope="row">' . __($label) . '</th>';
+            $text .= '<td>' . $counts['new'][$label] . '</td><td>' . $counts['updates'][$label] . '</td></tr>';
+        }
+        $text .= '</tbody></table>';
+
+        return $text;
     }
 
     // *** Owner family tree ***

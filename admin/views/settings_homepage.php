@@ -93,6 +93,7 @@ if (!defined('ADMIN_PAGE')) {
                             <option value="search" <?= $settings['module_item'][$i] == 'search' ? ' selected' : ''; ?>><?= __('Search'); ?></option>
                             <option value="names" <?= $settings['module_item'][$i] == 'names' ? ' selected' : ''; ?>><?= __('Names'); ?></option>
                             <option value="history" <?= $settings['module_item'][$i] == 'history' ? ' selected' : ''; ?>><?= __('Today in history'); ?></option>
+                            <option value="changes_last_month" <?= $settings['module_item'][$i] == 'changes_last_month' ? ' selected' : ''; ?>><?= __('Summary of changes in last month'); ?></option>
                             <option value="favourites" <?= $settings['module_item'][$i] == 'favourites' ? ' selected' : ''; ?>><?= __('Favourites'); ?></option>
                             <option value="alphabet" <?= $settings['module_item'][$i] == 'alphabet' ? ' selected' : ''; ?>><?= __('Surnames Index'); ?></option>
                             <option value="random_photo" <?= $settings['module_item'][$i] == 'random_photo' ? ' selected' : ''; ?>><?= __('Random photo'); ?></option>
@@ -228,6 +229,7 @@ if (!defined('ADMIN_PAGE')) {
                         <option value="search"><?= __('Search'); ?></option>
                         <option value="names"><?= __('Names'); ?></option>
                         <option value="history"><?= __('Today in history'); ?></option>
+                        <option value="changes_last_month"><?= __('Summary of changes in last month'); ?></option>
                         <option value="favourites"><?= __('Favourites'); ?></option>
                         <option value="alphabet"><?= __('Surnames Index'); ?></option>
                         <option value="random_photo"><?= __('Random photo'); ?></option>

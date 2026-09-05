@@ -107,6 +107,9 @@ class GeneralSettings
             }
 
             $order++;
+            $dbh->query("INSERT INTO humo_settings SET setting_variable='template_homepage', setting_value='active|center|changes_last_month', setting_order='" . $order . "'");
+
+            $order++;
             $dbh->query("INSERT INTO humo_settings SET setting_variable='template_homepage', setting_value='active|center|favourites', setting_order='" . $order . "'");
 
             $order++;
