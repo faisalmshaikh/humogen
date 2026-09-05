@@ -137,6 +137,12 @@ class TreeIndexModel extends BaseModel
                     $temp .= $this->changes_last_month();
                 }
 
+                // *** Top contributors in the last month ***
+                if ($module_item[$i] == 'top_contributors') {
+                    $header = __('Top contributors in last month');
+                    $temp .= $this->top_contributors();
+                }
+
                 // *** Alphabet line ***
                 if ($module_item[$i] == 'alphabet') {
                     //*** Find first first_character of last name ***
@@ -354,6 +360,71 @@ class TreeIndexModel extends BaseModel
             $text .= '<td>' . $counts['new'][$label] . '</td><td>' . $counts['updates'][$label] . '</td></tr>';
         }
         $text .= '</tbody></table>';
+
+        return $text;
+    }
+
+    /**
+     * Return a name-only tag cloud for users who added or changed records in
+     * the previous month. Font size represents contribution volume.
+     */
+    public function top_contributors(): string
+    {
+        $since = date('Y-m-d H:i:s', strtotime('-1 month'));
+        $contributionSources = [
+            ['humo_persons', 'pers_tree_id', 'pers_new_datetime', 'pers_new_user_id', 'person_new'],
+            ['humo_persons', 'pers_tree_id', 'pers_changed_datetime', 'pers_changed_user_id', 'person_changed'],
+            ['humo_families', 'fam_tree_id', 'fam_new_datetime', 'fam_new_user_id', 'family_new'],
+            ['humo_families', 'fam_tree_id', 'fam_changed_datetime', 'fam_changed_user_id', 'family_changed'],
+            ['humo_events', 'event_tree_id', 'event_new_datetime', 'event_new_user_id', 'event_new'],
+            ['humo_events', 'event_tree_id', 'event_changed_datetime', 'event_changed_user_id', 'event_changed'],
+            ['humo_addresses', 'address_tree_id', 'address_new_datetime', 'address_new_user_id', 'address_new'],
+            ['humo_addresses', 'address_tree_id', 'address_changed_datetime', 'address_changed_user_id', 'address_changed'],
+        ];
+
+        $parts = [];
+        $parameters = [];
+        foreach ($contributionSources as $sourceIndex => [$table, $treeColumn, $dateColumn, $userColumn, $parameterName]) {
+            $treeParameterName = ':tree_id_' . $sourceIndex;
+            $parts[] = "SELECT {$userColumn} AS user_id
+                        FROM {$table}
+                        WHERE {$treeColumn} = {$treeParameterName}
+                          AND {$dateColumn} >= :{$parameterName}";
+            $parameters[$treeParameterName] = $this->tree_id;
+            $parameters[":" . $parameterName] = $since;
+        }
+
+        $statement = $this->dbh->prepare(
+            "SELECT u.user_name, COUNT(*) AS contribution_count
+             FROM (" . implode(" UNION ALL ", $parts) . ") AS contributions
+             INNER JOIN humo_users u ON u.user_id = contributions.user_id
+             WHERE contributions.user_id IS NOT NULL
+               AND contributions.user_id <> 0
+               AND u.user_name IS NOT NULL
+               AND u.user_name <> ''
+             GROUP BY contributions.user_id, u.user_name
+             ORDER BY contribution_count DESC, u.user_name
+             LIMIT 30"
+        );
+        $statement->execute($parameters);
+        $contributors = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!$contributors) {
+            return '';
+        }
+
+        $maximum = (int) $contributors[0]['contribution_count'];
+        $minimum = (int) $contributors[count($contributors) - 1]['contribution_count'];
+        $text = '<div class="top-contributors" aria-label="' . htmlspecialchars(__('Top contributors in last month'), ENT_QUOTES, 'UTF-8') . '">';
+        foreach ($contributors as $contributor) {
+            $count = (int) $contributor['contribution_count'];
+            $fontSize = $maximum === $minimum
+                ? 20
+                : 12 + (int) round((($count - $minimum) / ($maximum - $minimum)) * 20);
+            $name = htmlspecialchars((string) $contributor['user_name'], ENT_QUOTES, 'UTF-8');
+            $text .= '<span class="top-contributor" style="font-size:' . $fontSize . 'px;">' . $name . '</span> ';
+        }
+        $text .= '</div>';
 
         return $text;
     }
