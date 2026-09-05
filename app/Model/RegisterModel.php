@@ -8,6 +8,34 @@ use PDO;
 
 class RegisterModel extends BaseModel
 {
+    /**
+     * Write registration-mail diagnostics without logging message contents or
+     * credentials. These entries are intended for the PHP/server error log.
+     */
+    private function registrationMailDebug(string $message, array $context = []): void
+    {
+        $safeContext = [];
+        foreach ($context as $key => $value) {
+            if (is_bool($value)) {
+                $safeContext[$key] = $value ? 'true' : 'false';
+            } elseif (is_scalar($value)) {
+                $safeContext[$key] = (string) $value;
+            }
+        }
+
+        error_log('[HuMo registration mail] ' . $message . ($safeContext ? ' ' . json_encode($safeContext) : ''));
+    }
+
+    private function maskedEmail(string $email): string
+    {
+        $atPosition = strpos($email, '@');
+        if ($atPosition === false) {
+            return $email === '' ? '(empty)' : '(invalid)';
+        }
+
+        return substr($email, 0, min(2, $atPosition)) . '***' . substr($email, $atPosition);
+    }
+
     public function getFormdata(): array
     {
         $register["name"] = '';
@@ -45,7 +73,13 @@ class RegisterModel extends BaseModel
     {
         $register["show_form"] = true;
         $register["error"] = '';
+        if (isset($_POST['send_mail']) && $register["register_allowed"] != true) {
+            $this->registrationMailDebug('Registration submission was rejected by the registration gate.', [
+                'spam_protection_enabled' => ($this->humo_option['registration_use_spam_question'] ?? 'n') === 'y',
+            ]);
+        }
         if (isset($_POST['send_mail']) && $register["register_allowed"] == true) {
+            $this->registrationMailDebug('Registration submission accepted for processing.');
             $usersql = 'SELECT * FROM humo_users WHERE user_name = :user_name';
             $stmt = $this->dbh->prepare($usersql);
             $stmt->execute([':user_name' => $_POST["register_name"]]);
@@ -67,6 +101,12 @@ class RegisterModel extends BaseModel
                 if ($password_error !== '') {
                     $register["error"] = __($password_error);
                 }
+            }
+
+            if ($register["error"]) {
+                $this->registrationMailDebug('Registration validation failed; no notification was attempted.', [
+                    'validation_error' => $register["error"],
+                ]);
             }
 
             if (!$register["error"]) {
@@ -96,6 +136,20 @@ class RegisterModel extends BaseModel
                     $register_address = $this->humo_option["general_email"];
                 }
 
+                $this->registrationMailDebug('Registration record created; preparing notification.', [
+                    'recipient_configured' => trim((string) $register_address) !== '',
+                    'recipient' => $this->maskedEmail(trim((string) $register_address)),
+                    'mail_mode' => $this->humo_option['mail_auto'] ?? '(unset)',
+                ]);
+
+                if (trim((string) $register_address) === '') {
+                    $this->registrationMailDebug('Notification skipped because no recipient address was resolved.');
+                } elseif (!filter_var($register_address, FILTER_VALIDATE_EMAIL)) {
+                    $this->registrationMailDebug('Resolved recipient address is invalid; continuing so PHPMailer diagnostics are captured.', [
+                        'recipient' => $this->maskedEmail(trim((string) $register_address)),
+                    ]);
+                }
+
                 $register_subject = "HuMo-genealogy. " . __('New registered user') . ": " . $_POST['register_name'] . "\n";
 
                 // *** It's better to use plain text in the subject ***
@@ -110,6 +164,19 @@ class RegisterModel extends BaseModel
 
                 $humo_option = $this->humo_option; // Used in mail.php
                 include_once(__DIR__ . '/../../include/mail.php');
+                $this->registrationMailDebug('PHPMailer initialized.', [
+                    'mailer' => $mail->Mailer,
+                    'smtp_host_configured' => $mail->Host !== '',
+                    'smtp_port' => $mail->Port,
+                    'smtp_auth' => $mail->SMTPAuth,
+                    'smtp_encryption' => $mail->SMTPSecure,
+                ]);
+
+                if ((int) ($this->humo_option['smtp_debug'] ?? 0) > 0) {
+                    $mail->Debugoutput = function ($message, $level): void {
+                        error_log('[HuMo registration mail][PHPMailer ' . $level . '] ' . trim(strip_tags((string) $message)));
+                    };
+                }
 
                 // *** Set who the message is to be sent from ***
                 //$mail->setFrom($_POST['register_mail'], $_POST['register_name']);
@@ -125,7 +192,22 @@ class RegisterModel extends BaseModel
                 $mail->AddReplyTo($_POST['register_mail'], $_POST['register_name']);
 
                 // *** Set who the message is to be sent to ***
-                $mail->addAddress($register_address, $register_address);
+                try {
+                    $recipientAdded = $mail->addAddress($register_address, $register_address);
+                    if (!$recipientAdded) {
+                        $this->registrationMailDebug('PHPMailer did not accept the recipient address.', [
+                            'recipient' => $this->maskedEmail(trim((string) $register_address)),
+                            'error' => $mail->ErrorInfo,
+                        ]);
+                    }
+                } catch (Throwable $exception) {
+                    $this->registrationMailDebug('PHPMailer rejected the recipient address.', [
+                        'recipient' => $this->maskedEmail(trim((string) $register_address)),
+                        'exception' => get_class($exception),
+                        'message' => $exception->getMessage(),
+                    ]);
+                    throw $exception;
+                }
 
                 // *** Set the subject line ***
                 $mail->Subject = $register_subject;
@@ -133,10 +215,23 @@ class RegisterModel extends BaseModel
 
                 // *** Replace the plain text body with one created manually ***
                 //$mail->AltBody = 'This is a plain-text message body';
-                if (!$mail->send()) {
-                    //  echo '<br><b>'.__('Sending e-mail failed!').' '. $mail->ErrorInfo.'</b>';
-                    //  } else {
-                    //  echo '<br><b>'.__('E-mail sent!').'</b><br>';
+                try {
+                    if (!$mail->send()) {
+                        $this->registrationMailDebug('PHPMailer send failed.', [
+                            'recipient' => $this->maskedEmail(trim((string) $register_address)),
+                            'error' => $mail->ErrorInfo,
+                        ]);
+                    } else {
+                        $this->registrationMailDebug('PHPMailer send completed successfully.', [
+                            'recipient' => $this->maskedEmail(trim((string) $register_address)),
+                        ]);
+                    }
+                } catch (Throwable $exception) {
+                    $this->registrationMailDebug('PHPMailer send threw an exception.', [
+                        'recipient' => $this->maskedEmail(trim((string) $register_address)),
+                        'exception' => get_class($exception),
+                        'message' => $exception->getMessage(),
+                    ]);
                 }
             }
         }
