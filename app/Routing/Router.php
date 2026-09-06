@@ -20,6 +20,7 @@ class Router
         ['path' => 'chat_genealogy', 'title' => 'Chat Genealogy', 'page' => 'chat_genealogy'],
         ['path' => 'cms_pages', 'title' => 'Information', 'page' => 'cms_pages', 'vars' => 'id'],
         ['path' => 'cookies', 'title' => 'Cookie information', 'page' => 'cookies'],
+        ['path' => 'close_relatives', 'title' => 'Close Relatives', 'page' => 'close_relatives', 'vars' => 'select_tree_id,id'],
         ['path' => 'descendant_report', 'title' => 'Descendants', 'page' => 'family', 'vars' => 'select_tree_id,id'],
         ['path' => 'descendant_chart', 'title' => 'Descendants', 'page' => 'descendant_chart', 'vars' => 'select_tree_id,id'],
         // *** Must be before family ***

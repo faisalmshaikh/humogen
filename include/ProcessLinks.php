@@ -25,6 +25,7 @@ class ProcessLinks
         ['page' => 'ancestor_report', 'file_rewrite' => 'ancestor_report', 'file' => 'index.php?page=ancestor_report', 'seperator' => '&amp;'],
         ['page' => 'anniversary', 'file_rewrite' => 'anniversary', 'file' => 'index.php?page=anniversary', 'seperator' => '&amp;'],
         ['page' => 'cms_pages', 'file_rewrite' => 'cms_pages', 'file' => 'index.php?page=cms_pages', 'seperator' => '&amp;'],
+        ['page' => 'close_relatives', 'file_rewrite' => 'close_relatives', 'file' => 'index.php?page=close_relatives', 'seperator' => '&amp;'],
         ['page' => 'cookies', 'file_rewrite' => 'cookies', 'file' => 'index.php?page=cookies', 'seperator' => '&amp;'],
         ['page' => 'family', 'file_rewrite' => 'family', 'file' => 'index.php?page=family', 'seperator' => '&amp;'],
         ['page' => 'fanchart', 'file_rewrite' => 'fanchart', 'file' => 'index.php?page=fanchart', 'seperator' => '&amp;'],
@@ -93,6 +94,9 @@ class ProcessLinks
                     if ($page == 'ancestor_report' && $vars) {
                         $link .= '/' . $vars['id'];
                     }
+                    if ($page == 'close_relatives' && $vars) {
+                        $link .= '/' . $vars['id'];
+                    }
                     if ($page == 'ancestor_report_rtf' && $vars) {
                         $link .= '/' . $vars['id'];
                     }
@@ -137,6 +141,9 @@ class ProcessLinks
                     }
 
                     if ($page == 'ancestor_report' and $vars) {
+                        $link .= '&amp;id=' . $vars['id'];
+                    }
+                    if ($page == 'close_relatives' and $vars) {
                         $link .= '&amp;id=' . $vars['id'];
                     }
                     if ($page == 'ancestor_report_rtf' and $vars) {

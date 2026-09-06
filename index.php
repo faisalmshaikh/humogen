@@ -238,6 +238,12 @@ if ($index['page'] == 'address') {
     $data = $controllerObj->list();
 } elseif ($index['page'] == 'cookies') {
     //
+} elseif ($index['page'] == 'close_relatives') {
+    $controllerObj = new Genealogy\App\Controller\CloseRelativesController($config);
+    if (isset($_GET["id"])) {
+        $id = $_GET["id"];
+    }
+    $data = $controllerObj->detail($id);
 } elseif ($index['page'] == 'descendant_chart') {
     $controllerObj = new Genealogy\App\Controller\DescendantChartController($config);
     $data = $controllerObj->getFamily();

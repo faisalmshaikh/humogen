@@ -66,6 +66,10 @@ class PersonPopup
             }
             $popover_content .=  '<li><a class="dropdown-item" href="' . $family_url . $direct_link . '"><img src="images/family.gif" border="0" alt="' . __('Family group sheet') . '"> ' . __('Family group sheet') . '</a></li>';
 
+            $vars['id'] = $personDb->pers_gedcomnumber;
+            $path_tmp = $processLinks->get_link($uri_path, 'close_relatives', $personDb->pers_tree_id, false, $vars);
+            $popover_content .= '<li><a class="dropdown-item" href="' . $path_tmp . '" rel="nofollow"><img src="images/relcalc.gif" border="0" alt="' . __('Close Relatives') . '"> ' . __('Close Relatives') . '</a></li>';
+
             // *** Descendants (only show a descendant_report icon if there are children) ***
             $relations = $db_functions->get_relations($personDb->pers_id);
             $check_children = false;

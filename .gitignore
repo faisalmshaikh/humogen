@@ -1,2 +1,3 @@
 /tests/*
 !/tests/registration_validator_test.php
+!/tests/close_relatives_graph_builder_test.php
