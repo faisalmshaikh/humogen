@@ -1,1 +1,2 @@
-/tests/
+/tests/*
+!/tests/registration_validator_test.php

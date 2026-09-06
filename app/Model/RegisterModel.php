@@ -53,6 +53,10 @@ class RegisterModel extends BaseModel
             $register["text"] = $_POST['register_text'];
         }
 
+        foreach (RegistrationFields::names() as $field) {
+            $register[$field] = isset($_POST[$field]) ? trim((string) $_POST[$field]) : '';
+        }
+
         return $register;
     }
 
@@ -89,6 +93,18 @@ class RegisterModel extends BaseModel
                 $register["error"] = __('ERROR: username already exists');
             }
 
+            if (!$register["error"]) {
+                $register["error"] = __(RegistrationValidator::usernameError((string) $_POST["register_name"]));
+            }
+
+            if (!$register["error"]) {
+                $register["error"] = __(RegistrationValidator::birthDateError($register['register_birth_date']));
+            }
+
+            if (!$register["error"]) {
+                $register["error"] = __(RegistrationValidator::maritalStatusError($register['register_marital_status']));
+            }
+
             $password = (string)($_POST["register_password"] ?? '');
             $repeat_password = (string)($_POST["register_repeat_password"] ?? '');
 
@@ -114,17 +130,29 @@ class RegisterModel extends BaseModel
                 $user_register_date = date("Y-m-d H:i");
                 $hashToStoreInDb = password_hash($password, PASSWORD_DEFAULT);
                 $sql = "INSERT INTO humo_users 
-                    (user_name, user_remark, user_register_date, user_mail, user_password_salted, user_group_id)
-                    VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_password_salted, :user_group_id)";
+                    (user_name, user_remark, user_register_date, user_mail, user_password_salted, user_group_id,
+                     user_father_name, user_mother_name, user_birth_date, user_reference_name, user_address,
+                     user_marital_status, user_paternal_grandparent_names, user_maternal_grandparent_names, user_phone)
+                    VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_password_salted, :user_group_id,
+                            :user_father_name, :user_mother_name, :user_birth_date, :user_reference_name, :user_address,
+                            :user_marital_status, :user_paternal_grandparent_names, :user_maternal_grandparent_names, :user_phone)";
                 $stmt = $this->dbh->prepare($sql);
-                $stmt->execute([
+                $values = [
                     ':user_name' => $_POST["register_name"],
                     ':user_remark' => $_POST["register_text"],
                     ':user_register_date' => $user_register_date,
                     ':user_mail' => $_POST["register_mail"],
                     ':user_password_salted' => $hashToStoreInDb,
                     ':user_group_id' => $this->humo_option["visitor_registration_group"]
-                ]);
+                ];
+                foreach (RegistrationFields::names() as $field) {
+                    $fieldValue = $register[$field];
+                    if ($field === 'register_birth_date' && $fieldValue === '') {
+                        $fieldValue = null;
+                    }
+                    $values[':' . RegistrationFields::column($field)] = $fieldValue;
+                }
+                $stmt->execute($values);
 
                 // *** Mail new registered user to the administrator ***
                 $register_address = '';
@@ -158,9 +186,12 @@ class RegisterModel extends BaseModel
                 $register_message = sprintf(__('Message sent through %s from the website.'), 'HuMo-genealogy');
                 $register_message .= "<br><br>\n";
                 $register_message .= __('New registered user') . "<br>\n";
-                $register_message .= __('Name') . ':' . $_POST['register_name'] . "<br>\n";
-                $register_message .= __('E-mail') . ": <a href='mailto:" . $_POST['register_mail'] . "'>" . $_POST['register_mail'] . "</a><br>\n";
-                $register_message .= $_POST['register_text'] . "<br>\n";
+                $register_message .= __('Name') . ':' . $this->emailEscape($_POST['register_name']) . "<br>\n";
+                $register_message .= __('E-mail') . ": <a href='mailto:" . $this->emailEscape($_POST['register_mail']) . "'>" . $this->emailEscape($_POST['register_mail']) . "</a><br>\n";
+                $register_message .= $this->emailEscape($_POST['register_text']) . "<br>\n";
+                foreach (RegistrationFields::labels() as $field => $label) {
+                    $register_message .= __($label) . ': ' . $this->emailEscape($register[$field]) . "<br>\n";
+                }
 
                 $humo_option = $this->humo_option; // Used in mail.php
                 include_once(__DIR__ . '/../../include/mail.php');
@@ -236,5 +267,10 @@ class RegisterModel extends BaseModel
             }
         }
         return $register;
+    }
+
+    private function emailEscape(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }

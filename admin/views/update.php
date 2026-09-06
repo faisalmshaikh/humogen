@@ -153,6 +153,7 @@
         show_status($dbh, $humo_option, 'v6.7.9a', 19);
         show_status($dbh, $humo_option, 'v7.0', 20);
         show_status($dbh, $humo_option, 'v7.0.3', 21);
+        show_status($dbh, $humo_option, 'v7.0.4', 22);
 
         /**
          * Remarks for programmers:
