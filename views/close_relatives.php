@@ -35,6 +35,10 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     <span id="close-relatives-zoom-level">100%</span>
     <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-zoom-in">+</button>
     <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-zoom-reset"><?= __('Reset zoom'); ?></button>
+    <label class="form-check form-check-inline ms-2 mb-0">
+        <input class="form-check-input" type="checkbox" id="close-relatives-show-contacts">
+        <span class="form-check-label"><?= __('Show phone and address for other relatives'); ?></span>
+    </label>
 </div>
 <p><?= __('Drag any person to reposition the chart. The relationship lines remain connected.'); ?></p>
 <div class="close-relatives-legend mb-2">
@@ -73,34 +77,74 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             };
 
             const mainId = data.nodes.find(node => node.gedcom === data.main_person)?.id;
-            const center = { x: 900, y: 600 };
-            positions.set(Number(mainId), center);
-
-            const freeSlots = [];
-            for (let row = 0; row < 6; row++) {
-                for (let column = 0; column < 6; column++) {
-                    const x = 150 + column * 300;
-                    const y = 100 + row * 190;
-                    if (Math.abs(x - center.x) < 240 && Math.abs(y - center.y) < 180) continue;
-                    freeSlots.push({ x, y });
-                }
-            }
             const spouseIndex = data.edges.findIndex(edge => edge.label === 'Spouse');
             const spouseId = spouseIndex >= 0 ? Number(data.edges[spouseIndex].to) : null;
-            const spousePosition = { x: 1210, y: 600 };
-            if (spouseId !== null) {
-                positions.set(spouseId, spousePosition);
-                for (let index = freeSlots.length - 1; index >= 0; index--) {
-                    if (Math.abs(freeSlots[index].x - spousePosition.x) < 240 && Math.abs(freeSlots[index].y - spousePosition.y) < 180) {
-                        freeSlots.splice(index, 1);
+            const primaryIds = new Set([Number(mainId), spouseId].filter(id => id !== null && !Number.isNaN(id)));
+            const center = { x: 900, y: 600 };
+            positions.set(Number(mainId), { x: 790, y: center.y });
+            if (spouseId !== null) positions.set(spouseId, { x: 1010, y: center.y });
+
+            // Use the graph's parent-child edges as a lightweight layout tree. Each
+            // newly reached family member is placed around the person it is reached
+            // from, which keeps children clustered around their parent instead of in
+            // an unrelated grid.
+            const neighbors = new Map();
+            data.nodes.forEach(node => neighbors.set(Number(node.id), []));
+            data.edges.filter(edge => edge.label !== 'Spouse').forEach(edge => {
+                const from = Number(edge.from);
+                const to = Number(edge.to);
+                if (!neighbors.has(from) || !neighbors.has(to)) return;
+                neighbors.get(from).push(to);
+                neighbors.get(to).push(from);
+            });
+
+            const occupied = () => [...positions.values()];
+            const collides = point => occupied().some(other =>
+                Math.abs(point.x - other.x) < cardWidth + 24 && Math.abs(point.y - other.y) < cardHeight + 24
+            );
+            const placeAround = (parentId, ids, depth) => {
+                const parent = positions.get(parentId);
+                if (!parent || !ids.length) return;
+                const direction = parentId === Number(mainId) || parentId === spouseId
+                    ? -Math.PI / 2
+                    : Math.atan2(parent.y - center.y, parent.x - center.x);
+                const radius = 210 + Math.min(depth, 5) * 42;
+                const spread = Math.min(Math.PI * 1.8, Math.max(Math.PI / 2, ids.length * .65));
+                const start = direction - spread / 2;
+                ids.forEach((id, index) => {
+                    let angle = start + (ids.length === 1 ? spread / 2 : index * spread / (ids.length - 1));
+                    let point = { x: parent.x + Math.cos(angle) * radius, y: parent.y + Math.sin(angle) * radius };
+                    let attempts = 0;
+                    while (collides(point) && attempts < 40) {
+                        angle += .18;
+                        point = { x: parent.x + Math.cos(angle) * radius, y: parent.y + Math.sin(angle) * radius };
+                        attempts++;
                     }
-                }
+                    positions.set(id, point);
+                });
+            };
+
+            const queue = [...primaryIds];
+            let depth = 1;
+            while (queue.length) {
+                const currentLevel = queue.splice(0, queue.length);
+                currentLevel.forEach(parentId => {
+                    const next = [...new Set(neighbors.get(parentId) || [])]
+                        .filter(id => !positions.has(id));
+                    placeAround(parentId, next, depth);
+                    next.forEach(id => {
+                        queue.push(id);
+                    });
+                });
+                depth++;
             }
-            let slotIndex = 0;
-            data.nodes.forEach(node => {
+
+            // Keep disconnected or multiply-connected nodes visible as a last resort.
+            data.nodes.forEach((node, index) => {
                 const id = Number(node.id);
-                if (positions.has(id)) return;
-                positions.set(id, freeSlots[slotIndex++] || { x: 150 + (slotIndex % 6) * 300, y: 100 + Math.floor(slotIndex / 6) * 190 });
+                if (!positions.has(id)) {
+                    positions.set(id, { x: 160 + (index % 6) * 300, y: 120 + Math.floor(index / 6) * 190 });
+                }
             });
 
             const endpoint = (from, to) => {
@@ -135,9 +179,11 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 
             const renderNodes = () => {
                 nodeLayer.replaceChildren();
+                const showOtherContacts = document.getElementById('close-relatives-show-contacts').checked;
                 data.nodes.forEach(node => {
                     const id = Number(node.id);
                     const position = positions.get(id);
+                    const showContacts = primaryIds.has(id) || showOtherContacts;
                     const card = document.createElement('div');
                     const sexClass = node.sex === 'M' ? 'male' : node.sex === 'F' ? 'female' : 'unknown';
                     card.className = 'close-relatives-node ' + sexClass + (node.gedcom === data.main_person ? ' main' : '');
@@ -145,8 +191,8 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     card.style.top = `${position.y - cardHeight / 2}px`;
                     card.dataset.nodeId = id;
                     card.innerHTML = `<span class="node-popup">${node.popup}</span><a class="node-name" href="${node.family_url}">${node.name}</a>`
-                        + (node.phone ? `<span class="node-contact"><strong><?= __('Phone'); ?>:</strong> ${node.phone}</span>` : '')
-                        + (node.address ? `<span class="node-contact"><strong><?= __('Address'); ?>:</strong> ${node.address}</span>` : '')
+                        + (showContacts && node.phone ? `<span class="node-contact"><strong><?= __('Phone'); ?>:</strong> ${node.phone}</span>` : '')
+                        + (showContacts && node.address ? `<span class="node-contact"><strong><?= __('Address'); ?>:</strong> ${node.address}</span>` : '')
 
                     card.addEventListener('pointerdown', event => {
                         if (event.target.closest('a, button, input')) return;
@@ -187,6 +233,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             document.getElementById('close-relatives-zoom-out').addEventListener('click', () => applyZoom(zoom - .1));
             document.getElementById('close-relatives-zoom-in').addEventListener('click', () => applyZoom(zoom + .1));
             document.getElementById('close-relatives-zoom-reset').addEventListener('click', () => applyZoom(1));
+            document.getElementById('close-relatives-show-contacts').addEventListener('change', renderNodes);
             renderEdges();
             renderNodes();
         })();
