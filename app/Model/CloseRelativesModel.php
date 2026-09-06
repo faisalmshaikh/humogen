@@ -3,8 +3,6 @@
 namespace Genealogy\App\Model;
 
 use Genealogy\Include\PersonPrivacy;
-use Genealogy\Include\PersonLink;
-use Genealogy\Include\PersonPopup;
 
 class CloseRelativesModel extends BaseModel
 {
@@ -13,12 +11,10 @@ class CloseRelativesModel extends BaseModel
         $allPeople = $this->db_functions->get_persons($this->tree_id);
         $peopleByGedcom = [];
         $people = [];
-        $personObjects = [];
 
         $privacyChecker = new PersonPrivacy();
         foreach ($allPeople as $person) {
             $peopleByGedcom[$person->pers_gedcomnumber] = (int) $person->pers_id;
-            $personObjects[(int) $person->pers_id] = $person;
             $privacy = $privacyChecker->get_privacy($person);
             $name = trim($person->pers_firstname . ' ' . $person->pers_prefix . ' ' . $person->pers_lastname);
             $people[(int) $person->pers_id] = [
@@ -73,15 +69,6 @@ class CloseRelativesModel extends BaseModel
         unset($family);
 
         $graph = (new CloseRelativesGraphBuilder())->build($people, $families, (int) $mainPerson->pers_id);
-        $personLink = new PersonLink();
-        $personPopup = new PersonPopup();
-        foreach ($graph['nodes'] as &$node) {
-            $person = $personObjects[$node['id']];
-            $privacy = $privacyChecker->get_privacy($person);
-            $node['family_url'] = htmlspecialchars($personLink->get_person_link($person), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $node['popup'] = $personPopup->person_popup_menu($person, $privacy);
-        }
-        unset($node);
         $graph['main_person'] = $mainPerson->pers_gedcomnumber;
         return $graph;
     }

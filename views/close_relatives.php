@@ -19,8 +19,18 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     <span id="close-relatives-zoom-level">100%</span>
     <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-zoom-in">+</button>
     <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-zoom-reset"><?= __('Reset zoom'); ?></button>
+    <label for="close-relatives-depth" class="ms-2 mb-0"><?= __('Tree depth'); ?>:</label>
+    <select class="form-select form-select-sm w-auto" id="close-relatives-depth">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3" selected>3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="-1"><?= __('All'); ?></option>
+    </select>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-center"><?= __('Center tree'); ?></button>
 </div>
-<p><?= __('Click a person to expand or collapse their relatives. Drag the chart to pan, or use the mouse wheel to zoom.'); ?></p>
+<p><?= __('Click a person to expand or collapse their relatives. Drag a name to move that node, or drag the background to pan.'); ?></p>
 <div class="close-relatives-legend mb-2">
     <span class="male"><?= __('Male'); ?></span>
     <span class="female"><?= __('Female'); ?></span>
@@ -43,8 +53,6 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const chartElement = document.getElementById('close-relatives-chart');
             const nodesById = new Map(data.nodes.map(node => [Number(node.id), node]));
             const mainNode = data.nodes.find(node => node.gedcom === data.main_person);
-            const spouseEdge = data.edges.find(edge => edge.label === 'Spouse');
-            const spouseId = spouseEdge ? Number(spouseEdge.to) : null;
             const neighbors = new Map(data.nodes.map(node => [Number(node.id), []]));
 
             data.edges.filter(edge => edge.label !== 'Spouse').forEach(edge => {
@@ -74,6 +82,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     id: node.id,
                     name: decodeHtml(node.name),
                     symbol: 'circle',
+                    draggable: true,
                     itemStyle: {
                         color: nodeColor(node),
                         borderColor: node.gedcom === data.main_person ? '#0d6efd' : '#68727e',
@@ -84,7 +93,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             };
 
             const seen = new Set();
-            const roots = [mainNode, spouseId === null ? null : nodesById.get(spouseId)]
+            const roots = [mainNode]
                 .filter(Boolean)
                 .map(node => buildBranch(Number(node.id), null, seen))
                 .filter(Boolean);
@@ -101,14 +110,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 verticalAlign: 'middle',
                 align: 'right',
                 fontSize: 12,
-                formatter: params => `{popup|} ${params.data.name}`,
-                rich: {
-                    popup: {
-                        width: 16,
-                        height: 16,
-                        backgroundColor: { image: 'images/reports.gif' }
-                    }
-                }
+                formatter: params => params.data.name
             };
             const chart = echarts.init(chartElement);
             const chartOption = {
@@ -126,12 +128,21 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     symbolSize: 9,
                     roam: true,
                     expandAndCollapse: true,
-                    initialTreeDepth: -1,
+                    initialTreeDepth: 3,
                     lineStyle: { color: '#59636e', width: 1.5 },
                     label: personLabel,
                     leaves: { label: { ...personLabel, position: 'right', align: 'left' } },
                     emphasis: { focus: 'ancestor' }
                 }]
+            };
+
+            let selectedDepth = 3;
+            const setTreeDepth = depth => {
+                selectedDepth = depth;
+                chart.setOption({
+                    ...chartOption,
+                    series: [{ ...chartOption.series[0], initialTreeDepth: depth }]
+                }, true);
             };
 
             let zoom = 1;
@@ -146,8 +157,32 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             document.getElementById('close-relatives-zoom-out').addEventListener('click', () => applyZoom(zoom - .1));
             document.getElementById('close-relatives-zoom-in').addEventListener('click', () => applyZoom(zoom + .1));
             document.getElementById('close-relatives-zoom-reset').addEventListener('click', () => applyZoom(1));
+            const depthSelect = document.getElementById('close-relatives-depth');
+            depthSelect.addEventListener('change', () => {
+                setTreeDepth(Number(depthSelect.value));
+            });
+            document.getElementById('close-relatives-center').addEventListener('click', () => {
+                applyZoom(1);
+                chart.dispatchAction({ type: 'restore' });
+                setTreeDepth(selectedDepth);
+                chart.resize();
+            });
             window.addEventListener('resize', () => chart.resize());
             chart.setOption(chartOption);
+
+            const installNodeDragging = () => {
+                const series = chart.getModel().getSeriesByIndex(0);
+                const chartData = series && series.getData();
+                if (!chartData) return;
+                chartData.eachItemGraphicEl(graphic => {
+                    if (!graphic || graphic.__closeRelativesDragging) return;
+                    graphic.__closeRelativesDragging = true;
+                    graphic.draggable = true;
+                    graphic.cursor = 'move';
+                });
+            };
+            chart.on('finished', installNodeDragging);
+            installNodeDragging();
         })();
     </script>
 <?php } ?>
