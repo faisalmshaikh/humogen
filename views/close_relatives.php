@@ -12,12 +12,14 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     .close-relatives-edge { stroke:#59636e; stroke-width:2; }
     .close-relatives-edge.spouse { stroke-dasharray:7 6; }
     .close-relatives-edge-label { font-size:14px; fill:#39424e; paint-order:stroke; stroke:#fff; stroke-width:5px; stroke-linejoin:round; }
-    .close-relatives-node { position:absolute; width:210px; min-height:106px; padding:.45rem .55rem; border:2px solid #68727e; border-radius:10px; box-sizing:border-box; color:#18212b; font-size:12px; cursor:grab; user-select:none; box-shadow:0 2px 5px #0002; }
+    .close-relatives-node { position:absolute; width:210px; min-height:82px; padding:.35rem .5rem; border:2px solid #68727e; border-radius:10px; box-sizing:border-box; color:#18212b; font-size:12px; cursor:grab; user-select:none; box-shadow:0 2px 5px #0002; }
     .close-relatives-node.dragging { cursor:grabbing; z-index:10; }
     .close-relatives-node.main { border:4px solid #0d6efd; }
-    .close-relatives-node .node-name { display:block; font-size:13px; font-weight:600; line-height:1.2; margin-bottom:.25rem; }
+    .close-relatives-node .node-name { display:inline-block; vertical-align:middle; font-size:13px; font-weight:600; line-height:1.2; margin-bottom:.25rem; }
     .close-relatives-node .node-contact { display:block; line-height:1.25; overflow-wrap:anywhere; }
-    .close-relatives-node .node-actions { display:flex; justify-content:flex-end; margin-top:.25rem; }
+    .close-relatives-node .node-popup { display:inline-block; vertical-align:middle; margin-right:.2rem; }
+    .close-relatives-node .node-popup .dropdown { display:inline-block; }
+    .close-relatives-node .node-popup .btn { padding:0 .15rem; }
     .close-relatives-node .dropdown-menu { font-size:12px; }
     .close-relatives-node.male { background:#d9efff; }
     .close-relatives-node.female { background:#fff6c7; }
@@ -60,7 +62,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const edgeLayer = document.getElementById('close-relatives-edges');
             const nodeLayer = document.getElementById('close-relatives-nodes');
             const cardWidth = 210;
-            const cardHeight = 106;
+            const cardHeight = 82;
             const positions = new Map();
             let zoom = 1;
 
@@ -142,10 +144,9 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     card.style.left = `${position.x - cardWidth / 2}px`;
                     card.style.top = `${position.y - cardHeight / 2}px`;
                     card.dataset.nodeId = id;
-                    card.innerHTML = `<a class="node-name" href="${node.family_url}">${node.name}</a>`
+                    card.innerHTML = `<span class="node-popup">${node.popup}</span><a class="node-name" href="${node.family_url}">${node.name}</a>`
                         + (node.phone ? `<span class="node-contact"><strong><?= __('Phone'); ?>:</strong> ${node.phone}</span>` : '')
                         + (node.address ? `<span class="node-contact"><strong><?= __('Address'); ?>:</strong> ${node.address}</span>` : '')
-                        + `<span class="node-actions">${node.popup}</span>`;
 
                     card.addEventListener('pointerdown', event => {
                         if (event.target.closest('a, button, input')) return;
