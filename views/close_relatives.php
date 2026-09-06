@@ -7,13 +7,10 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     .close-relatives-toolbar { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
     .close-relatives-viewport { height:720px; overflow:auto; border:1px solid #ced4da; background:#fff; touch-action:none; }
     .close-relatives-canvas { position:relative; width:1800px; height:1200px; transform-origin:top left; }
-    .close-relatives-canvas > svg,
-    .close-relatives-nodes { position:absolute; inset:0; width:1800px; height:1200px; }
-    .close-relatives-edge { stroke:#59636e; stroke-width:2; }
-    .close-relatives-edge.spouse { stroke-dasharray:7 6; }
-    .close-relatives-edge-label { font-size:14px; fill:#39424e; paint-order:stroke; stroke:#fff; stroke-width:5px; stroke-linejoin:round; }
-    .close-relatives-node { position:absolute; width:210px; min-height:82px; padding:.35rem .5rem; border:2px solid #68727e; border-radius:10px; box-sizing:border-box; color:#18212b; font-size:12px; cursor:grab; user-select:none; box-shadow:0 2px 5px #0002; }
-    .close-relatives-node.dragging { cursor:grabbing; z-index:10; }
+    .close-relatives-chart { position:absolute; inset:0; width:1800px; height:1200px; }
+    .close-relatives-center { position:absolute; left:50%; top:50%; display:flex; gap:10px; transform:translate(-50%, -50%); z-index:2; }
+    .close-relatives-center .close-relatives-node { position:relative; left:auto; top:auto; }
+    .close-relatives-node { width:210px; min-height:82px; padding:.35rem .5rem; border:2px solid #68727e; border-radius:10px; box-sizing:border-box; color:#18212b; font-size:12px; cursor:pointer; user-select:none; box-shadow:0 2px 5px #0002; }
     .close-relatives-node.main { border:4px solid #0d6efd; }
     .close-relatives-node .node-name { display:inline-block; vertical-align:middle; font-size:13px; font-weight:600; line-height:1.2; margin-bottom:.25rem; }
     .close-relatives-node .node-contact { display:block; line-height:1.25; overflow-wrap:anywhere; }
@@ -40,7 +37,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
         <span class="form-check-label"><?= __('Show phone and address for other relatives'); ?></span>
     </label>
 </div>
-<p><?= __('Drag any person to reposition the chart. The relationship lines remain connected.'); ?></p>
+<p><?= __('Drag the chart to pan, use the mouse wheel to zoom, or click a person to open their page.'); ?></p>
 <div class="close-relatives-legend mb-2">
     <span class="male"><?= __('Male'); ?></span>
     <span class="female"><?= __('Female'); ?></span>
@@ -49,47 +46,34 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 <?php if (!$data['main_person']) { ?>
     <div class="alert alert-warning"><?= __('The requested person could not be found.'); ?></div>
 <?php } else { ?>
-    <div class="close-relatives-viewport" aria-label="<?= __('Close relatives network chart'); ?>">
+    <div class="close-relatives-viewport" aria-label="<?= __('Close relatives radial tree'); ?>">
         <div class="close-relatives-canvas" id="close-relatives-canvas">
-            <svg viewBox="0 0 1800 1200" role="img" aria-labelledby="close-relatives-title">
-                <title id="close-relatives-title"><?= __('Close Relatives'); ?></title>
-                <g id="close-relatives-edges"></g>
-            </svg>
-            <div class="close-relatives-nodes" id="close-relatives-nodes"></div>
+            <div class="close-relatives-chart" id="close-relatives-chart" role="img" aria-label="<?= __('Close Relatives'); ?>"></div>
+            <div class="close-relatives-center" id="close-relatives-center"></div>
         </div>
     </div>
+    <script src="assets/echarts/echarts.min.js"></script>
     <script type="application/json" id="close-relatives-data"><?= $graphJson; ?></script>
     <script>
         (() => {
             const data = JSON.parse(document.getElementById('close-relatives-data').textContent);
             const canvas = document.getElementById('close-relatives-canvas');
-            const edgeLayer = document.getElementById('close-relatives-edges');
-            const nodeLayer = document.getElementById('close-relatives-nodes');
-            const cardWidth = 210;
-            const cardHeight = 82;
-            const positions = new Map();
-            let zoom = 1;
-
-            const createSvg = (tag, attributes) => {
-                const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
-                Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
-                return element;
+            const chartElement = document.getElementById('close-relatives-chart');
+            const centerElement = document.getElementById('close-relatives-center');
+            const nodesById = new Map(data.nodes.map(node => [Number(node.id), node]));
+            const decodeHtml = value => {
+                const element = document.createElement('textarea');
+                element.innerHTML = value || '';
+                return element.value;
             };
+            const mainNode = data.nodes.find(node => node.gedcom === data.main_person);
+            const spouseEdge = data.edges.find(edge => edge.label === 'Spouse');
+            const spouseNode = spouseEdge ? nodesById.get(Number(spouseEdge.to)) : null;
+            const primaryIds = new Set([mainNode, spouseNode].filter(Boolean).map(node => Number(node.id)));
+            const neighbors = new Map(data.nodes.map(node => [Number(node.id), []]));
+            const phoneLabel = <?= json_encode(__('Phone')); ?>;
+            const addressLabel = <?= json_encode(__('Address')); ?>;
 
-            const mainId = data.nodes.find(node => node.gedcom === data.main_person)?.id;
-            const spouseIndex = data.edges.findIndex(edge => edge.label === 'Spouse');
-            const spouseId = spouseIndex >= 0 ? Number(data.edges[spouseIndex].to) : null;
-            const primaryIds = new Set([Number(mainId), spouseId].filter(id => id !== null && !Number.isNaN(id)));
-            const center = { x: 900, y: 600 };
-            positions.set(Number(mainId), { x: 790, y: center.y });
-            if (spouseId !== null) positions.set(spouseId, { x: 1010, y: center.y });
-
-            // Use the graph's parent-child edges as a lightweight layout tree. Each
-            // newly reached family member is placed around the person it is reached
-            // from, which keeps children clustered around their parent instead of in
-            // an unrelated grid.
-            const neighbors = new Map();
-            data.nodes.forEach(node => neighbors.set(Number(node.id), []));
             data.edges.filter(edge => edge.label !== 'Spouse').forEach(edge => {
                 const from = Number(edge.from);
                 const to = Number(edge.to);
@@ -98,130 +82,105 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 neighbors.get(to).push(from);
             });
 
-            const occupied = () => [...positions.values()];
-            const collides = point => occupied().some(other =>
-                Math.abs(point.x - other.x) < cardWidth + 24 && Math.abs(point.y - other.y) < cardHeight + 24
-            );
-            const placeAround = (parentId, ids, depth) => {
-                const parent = positions.get(parentId);
-                if (!parent || !ids.length) return;
-                const direction = parentId === Number(mainId) || parentId === spouseId
-                    ? -Math.PI / 2
-                    : Math.atan2(parent.y - center.y, parent.x - center.x);
-                const radius = 210 + Math.min(depth, 5) * 42;
-                const spread = Math.min(Math.PI * 1.8, Math.max(Math.PI / 2, ids.length * .65));
-                const start = direction - spread / 2;
-                ids.forEach((id, index) => {
-                    let angle = start + (ids.length === 1 ? spread / 2 : index * spread / (ids.length - 1));
-                    let point = { x: parent.x + Math.cos(angle) * radius, y: parent.y + Math.sin(angle) * radius };
-                    let attempts = 0;
-                    while (collides(point) && attempts < 40) {
-                        angle += .18;
-                        point = { x: parent.x + Math.cos(angle) * radius, y: parent.y + Math.sin(angle) * radius };
-                        attempts++;
-                    }
-                    positions.set(id, point);
-                });
+            const nodeColor = node => node.sex === 'M' ? '#d9efff' : node.sex === 'F' ? '#fff6c7' : '#eee';
+            const buildBranch = (id, parentId, seen) => {
+                if (seen.has(id)) return null;
+                seen.add(id);
+                const node = nodesById.get(id);
+                if (!node) return null;
+                const children = [...new Set(neighbors.get(id) || [])]
+                    .filter(childId => childId !== parentId && !seen.has(childId))
+                    .map(childId => buildBranch(childId, id, seen))
+                    .filter(Boolean);
+                return {
+                    id: node.id,
+                    name: decodeHtml(node.name),
+                    phone: decodeHtml(node.phone),
+                    address: decodeHtml(node.address),
+                    family_url: decodeHtml(node.family_url),
+                    popup: node.popup,
+                    isPrimary: primaryIds.has(id),
+                    symbol: primaryIds.has(id) ? 'none' : 'circle',
+                    label: primaryIds.has(id) ? { show: false } : undefined,
+                    itemStyle: { color: nodeColor(node), borderColor: node.gedcom === data.main_person ? '#0d6efd' : '#68727e', borderWidth: node.gedcom === data.main_person ? 3 : 1 },
+                    children
+                };
             };
 
-            const queue = [...primaryIds];
-            let depth = 1;
-            while (queue.length) {
-                const currentLevel = queue.splice(0, queue.length);
-                currentLevel.forEach(parentId => {
-                    const next = [...new Set(neighbors.get(parentId) || [])]
-                        .filter(id => !positions.has(id));
-                    placeAround(parentId, next, depth);
-                    next.forEach(id => {
-                        queue.push(id);
-                    });
-                });
-                depth++;
-            }
-
-            // Keep disconnected or multiply-connected nodes visible as a last resort.
-            data.nodes.forEach((node, index) => {
-                const id = Number(node.id);
-                if (!positions.has(id)) {
-                    positions.set(id, { x: 160 + (index % 6) * 300, y: 120 + Math.floor(index / 6) * 190 });
+            const seen = new Set();
+            const primaryBranches = [mainNode, spouseNode]
+                .filter(Boolean)
+                .map(node => buildBranch(Number(node.id), null, seen))
+                .filter(Boolean);
+            const treeData = [{ id: 'close-relatives-root', name: '', symbol: 'none', label: { show: false }, children: primaryBranches }];
+            data.nodes.forEach(node => {
+                if (!seen.has(Number(node.id))) {
+                    const branch = buildBranch(Number(node.id), null, seen);
+                    if (branch) treeData[0].children.push(branch);
                 }
             });
 
-            const endpoint = (from, to) => {
-                const dx = to.x - from.x;
-                const dy = to.y - from.y;
-                const scale = 1 / Math.max(Math.abs(dx) / (cardWidth / 2), Math.abs(dy) / (cardHeight / 2));
-                return { x: from.x + dx * scale, y: from.y + dy * scale };
+            const contactText = node => {
+                const showContacts = node.isPrimary || document.getElementById('close-relatives-show-contacts').checked;
+                const details = [];
+                if (showContacts && node.phone) details.push(phoneLabel + ': ' + node.phone);
+                if (showContacts && node.address) details.push(addressLabel + ': ' + node.address);
+                return details;
             };
 
-            const renderEdges = () => {
-                edgeLayer.replaceChildren();
-                data.edges.forEach(edge => {
-                    const from = positions.get(Number(edge.from));
-                    const to = positions.get(Number(edge.to));
-                    if (!from || !to) return;
-                    const start = endpoint(from, to);
-                    const end = endpoint(to, from);
-                    edgeLayer.appendChild(createSvg('line', {
-                        x1:start.x, y1:start.y, x2:end.x, y2:end.y,
-                        class:'close-relatives-edge ' + (edge.style === 'dotted' ? 'spouse' : '')
-                    }));
-                    if (edge.label) {
-                        const label = createSvg('text', {
-                            x:(start.x + end.x) / 2, y:(start.y + end.y) / 2 - 7,
-                            class:'close-relatives-edge-label'
-                        });
-                        label.textContent = edge.label;
-                        edgeLayer.appendChild(label);
-                    }
-                });
+            const chart = echarts.init(chartElement);
+            const chartOption = {
+                animationDuration: 500,
+                animationDurationUpdate: 750,
+                series: [{
+                    type: 'tree',
+                    data: treeData,
+                    layout: 'radial',
+                    top: '3%',
+                    left: '3%',
+                    bottom: '3%',
+                    right: '3%',
+                    symbol: 'circle',
+                    symbolSize: 9,
+                    roam: true,
+                    expandAndCollapse: false,
+                    initialTreeDepth: -1,
+                    lineStyle: { color: '#59636e', width: 1.5 },
+                    label: {
+                        position: 'left',
+                        verticalAlign: 'middle',
+                        align: 'right',
+                        fontSize: 12,
+                        formatter: params => [params.data.name, ...contactText(params.data)].filter(Boolean).join('\n')
+                    },
+                    leaves: {
+                        label: {
+                            position: 'right',
+                            verticalAlign: 'middle',
+                            align: 'left'
+                        }
+                    },
+                    emphasis: { focus: 'ancestor' }
+                }]
             };
 
-            const renderNodes = () => {
-                nodeLayer.replaceChildren();
-                const showOtherContacts = document.getElementById('close-relatives-show-contacts').checked;
-                data.nodes.forEach(node => {
-                    const id = Number(node.id);
-                    const position = positions.get(id);
-                    const showContacts = primaryIds.has(id) || showOtherContacts;
+            const renderPrimaryCards = () => {
+                centerElement.replaceChildren();
+                [mainNode, spouseNode].filter(Boolean).forEach(node => {
                     const card = document.createElement('div');
                     const sexClass = node.sex === 'M' ? 'male' : node.sex === 'F' ? 'female' : 'unknown';
-                    card.className = 'close-relatives-node ' + sexClass + (node.gedcom === data.main_person ? ' main' : '');
-                    card.style.left = `${position.x - cardWidth / 2}px`;
-                    card.style.top = `${position.y - cardHeight / 2}px`;
-                    card.dataset.nodeId = id;
+                    card.className = 'close-relatives-node ' + sexClass + (node === mainNode ? ' main' : '');
                     card.innerHTML = `<span class="node-popup">${node.popup}</span><a class="node-name" href="${node.family_url}">${node.name}</a>`
-                        + (showContacts && node.phone ? `<span class="node-contact"><strong><?= __('Phone'); ?>:</strong> ${node.phone}</span>` : '')
-                        + (showContacts && node.address ? `<span class="node-contact"><strong><?= __('Address'); ?>:</strong> ${node.address}</span>` : '')
-
-                    card.addEventListener('pointerdown', event => {
+                        + contactText({ ...node, isPrimary: true }).map(detail => `<span class="node-contact">${detail}</span>`).join('');
+                    card.addEventListener('click', event => {
                         if (event.target.closest('a, button, input')) return;
-                        event.preventDefault();
-                        card.classList.add('dragging');
-                        card.setPointerCapture(event.pointerId);
-                        const move = moveEvent => {
-                            const rect = canvas.getBoundingClientRect();
-                            const x = (moveEvent.clientX - rect.left) / zoom;
-                            const y = (moveEvent.clientY - rect.top) / zoom;
-                            positions.set(id, { x, y });
-                            card.style.left = `${x - cardWidth / 2}px`;
-                            card.style.top = `${y - cardHeight / 2}px`;
-                            renderEdges();
-                        };
-                        const stop = () => {
-                            card.classList.remove('dragging');
-                            card.removeEventListener('pointermove', move);
-                            card.removeEventListener('pointerup', stop);
-                            card.removeEventListener('pointercancel', stop);
-                        };
-                        card.addEventListener('pointermove', move);
-                        card.addEventListener('pointerup', stop);
-                        card.addEventListener('pointercancel', stop);
+                        window.location.href = node.family_url;
                     });
-                    nodeLayer.appendChild(card);
+                    centerElement.appendChild(card);
                 });
             };
 
+            let zoom = 1;
             const applyZoom = nextZoom => {
                 zoom = Math.max(.5, Math.min(1.75, nextZoom));
                 canvas.style.transform = `scale(${zoom})`;
@@ -230,12 +189,19 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 document.getElementById('close-relatives-zoom-level').textContent = `${Math.round(zoom * 100)}%`;
             };
 
+            chart.on('click', params => {
+                if (params.data && params.data.family_url) window.location.href = params.data.family_url;
+            });
+            document.getElementById('close-relatives-show-contacts').addEventListener('change', () => {
+                chart.setOption(chartOption, true);
+                renderPrimaryCards();
+            });
             document.getElementById('close-relatives-zoom-out').addEventListener('click', () => applyZoom(zoom - .1));
             document.getElementById('close-relatives-zoom-in').addEventListener('click', () => applyZoom(zoom + .1));
             document.getElementById('close-relatives-zoom-reset').addEventListener('click', () => applyZoom(1));
-            document.getElementById('close-relatives-show-contacts').addEventListener('change', renderNodes);
-            renderEdges();
-            renderNodes();
+            window.addEventListener('resize', () => chart.resize());
+            chart.setOption(chartOption);
+            renderPrimaryCards();
         })();
     </script>
 <?php } ?>
