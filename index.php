@@ -240,6 +240,10 @@ if ($index['page'] == 'address') {
     //
 } elseif ($index['page'] == 'close_relatives') {
     $controllerObj = new Genealogy\App\Controller\CloseRelativesController($config);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['google_sheet'])) {
+        $controllerObj->submitToGoogleSheet();
+        exit;
+    }
     if (isset($_GET["id"])) {
         $id = $_GET["id"];
     }

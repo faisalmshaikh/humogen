@@ -8,6 +8,8 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     .close-relatives-viewport { width:100%; height:calc(100vh - 320px); min-height:360px; overflow:auto; border:1px solid #ced4da; background:#fff; touch-action:none; }
     .close-relatives-canvas { position:relative; width:100%; height:100%; min-width:100%; min-height:100%; transform-origin:top left; }
     .close-relatives-chart { position:absolute; inset:0; width:100%; height:100%; }
+    .close-relatives-table td[contenteditable="true"] { min-width:8rem; cursor:text; }
+    .close-relatives-table td:first-child { min-width:3rem; white-space:nowrap; }
     .close-relatives-legend span { display:inline-block; padding:.25rem .6rem; margin-right:.5rem; border:1px solid #adb5bd; border-radius:.25rem; }
     .close-relatives-legend .male { background:#9ec5fe; }
     .close-relatives-legend .female { background:#f1aeb5; }
@@ -45,6 +47,33 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             <div class="close-relatives-chart" id="close-relatives-chart" role="img" aria-label="<?= __('Close Relatives'); ?>"></div>
         </div>
     </div>
+    <?php
+    $close_relatives_sheet_token = bin2hex(random_bytes(32));
+    $_SESSION['close_relatives_sheet_token'] = $close_relatives_sheet_token;
+    ?>
+    <div class="table-responsive mt-4">
+        <table class="table table-sm table-bordered close-relatives-table" id="close-relatives-table">
+            <thead>
+                <tr>
+                    <th><?= __('Person Popup'); ?></th>
+                    <th><?= __('First Name'); ?></th>
+                    <th><?= __('GEDCOM Number'); ?></th>
+                    <th><?= __('Birth Date'); ?></th>
+                    <th><?= __('Death Date'); ?></th>
+                    <th><?= __('Phone Number'); ?></th>
+                    <th><?= __('Address'); ?></th>
+                    <th><?= __('Relation Name'); ?></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="mb-4">
+        <button type="button" class="btn btn-sm btn-success" id="close-relatives-submit">
+            <?= __('Submit Changes'); ?>
+        </button>
+        <span id="close-relatives-submit-status" class="ms-2" role="status"></span>
+    </div>
     <script src="assets/echarts/echarts.min.js"></script>
     <script type="application/json" id="close-relatives-data"><?= $graphJson; ?></script>
     <script>
@@ -67,12 +96,14 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 return element.value;
             };
             const nodeColor = node => node.sex === 'M' ? '#9ec5fe' : node.sex === 'F' ? '#f1aeb5' : '#eee';
-            const buildPersonNode = (id, children = []) => {
+            const relationById = new Map();
+            const buildPersonNode = (id, children = [], relation = '') => {
                 const node = nodesById.get(id);
                 if (!node) return null;
+                relationById.set(id, relation);
                 return {
                     id: node.id,
-                    name: decodeHtml(node.name),
+                    name: decodeHtml(node.first_name || node.name),
                     symbol: 'circle',
                     itemStyle: {
                         color: nodeColor(node),
@@ -89,7 +120,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const motherId = mainParents.find(id => nodeSex(id) === 'F');
             const spouseId = spouseEdge ? Number(spouseEdge.to) : null;
 
-            const buildParentBranch = parentId => {
+            const buildParentBranch = (parentId, side) => {
                 if (parentId === undefined) return null;
                 const grandparents = parentsOf(parentId)
                     .sort((left, right) => (nodeSex(left) === 'M' ? 0 : 1) - (nodeSex(right) === 'M' ? 0 : 1))
@@ -97,12 +128,17 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 const grandmotherId = grandparents.find(id => nodeSex(id) === 'F');
                 const auntsAndUncles = grandmotherId === undefined ? [] : childrenOf(grandmotherId)
                     .filter(id => id !== parentId)
-                    .map(id => buildPersonNode(id, childrenOf(id).map(childId => buildPersonNode(childId))));
+                    .map(id => buildPersonNode(
+                        id,
+                        childrenOf(id).map(childId => buildPersonNode(childId, [], `${side} cousin`)),
+                        `${side} ${nodeSex(id) === 'M' ? 'uncle' : 'aunt'}`
+                    ));
                 const grandparentNodes = grandparents.map(grandparentId => buildPersonNode(
                     grandparentId,
-                    grandparentId === grandmotherId ? auntsAndUncles : []
+                    grandparentId === grandmotherId ? auntsAndUncles : [],
+                    `${side} ${nodeSex(grandparentId) === 'M' ? 'grandfather' : 'grandmother'}`
                 ));
-                return buildPersonNode(parentId, grandparentNodes);
+                return buildPersonNode(parentId, grandparentNodes, nodeSex(parentId) === 'M' ? 'Father' : 'Mother');
             };
 
             const buildSpouseBranch = spousePersonId => {
@@ -112,18 +148,54 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 const spouseMotherId = spouseParents.find(id => nodeSex(id) === 'F');
                 const spouseMotherChildren = spouseMotherId === undefined ? [] : childrenOf(spouseMotherId)
                     .filter(id => id !== spousePersonId)
-                    .map(id => buildPersonNode(id));
+                    .map(id => buildPersonNode(id, [], 'Sibling of spouse'));
                 return buildPersonNode(spousePersonId, [
-                    spouseFatherId === undefined ? null : buildPersonNode(spouseFatherId),
-                    spouseMotherId === undefined ? null : buildPersonNode(spouseMotherId, spouseMotherChildren)
-                ]);
+                    spouseFatherId === undefined ? null : buildPersonNode(spouseFatherId, [], 'Father of spouse'),
+                    spouseMotherId === undefined ? null : buildPersonNode(spouseMotherId, spouseMotherChildren, 'Mother of spouse')
+                ], 'Spouse');
             };
 
             const treeData = [buildPersonNode(mainId, [
-                buildParentBranch(fatherId),
-                buildParentBranch(motherId),
+                buildParentBranch(fatherId, 'Paternal'),
+                buildParentBranch(motherId, 'Maternal'),
                 buildSpouseBranch(spouseId)
-            ])].filter(Boolean);
+            ], 'Main person')].filter(Boolean);
+
+            const tableNodeIds = [];
+            const collectTreeNodes = nodes => nodes.forEach(node => {
+                if (!node || tableNodeIds.includes(Number(node.id))) return;
+                tableNodeIds.push(Number(node.id));
+                collectTreeNodes(node.children || []);
+            });
+            collectTreeNodes(treeData);
+
+            const escapeHtml = value => {
+                const element = document.createElement('div');
+                element.textContent = value || '';
+                return element.innerHTML;
+            };
+            const renderTable = () => {
+                const body = document.querySelector('#close-relatives-table tbody');
+                body.replaceChildren();
+                tableNodeIds.forEach(id => {
+                    const node = nodesById.get(id);
+                    if (!node) return;
+                    const relation = relationById.get(id) || 'Relative';
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td contenteditable="true">${node.popup || ''}</td>`
+                        + `<td contenteditable="true"><a href="${node.family_url}">${node.first_name || node.name}</a></td>`
+                        + `<td>${escapeHtml(node.gedcom)}</td>`
+                        + `<td contenteditable="true">${escapeHtml(node.birth_date)}</td>`
+                        + `<td contenteditable="true">${escapeHtml(node.death_date)}</td>`
+                        + `<td contenteditable="true">${escapeHtml(node.phone)}</td>`
+                        + `<td contenteditable="true">${escapeHtml(node.address)}</td>`
+                        + `<td contenteditable="true">${escapeHtml(relation)}</td>`;
+                    row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+                        cell.spellcheck = false;
+                    });
+                    body.appendChild(row);
+                });
+            };
 
             let orientation = 'TB';
             const makeLabel = () => ({
@@ -221,6 +293,37 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 updateOrientationButton();
                 setTreeDepth(selectedDepth);
             });
+            const submitButton = document.getElementById('close-relatives-submit');
+            const submitStatus = document.getElementById('close-relatives-submit-status');
+            submitButton.addEventListener('click', () => {
+                const headers = ['Person Popup', 'First Name', 'GEDCOM Number', 'Birth Date', 'Death Date', 'Phone Number', 'Address', 'Relation Name'];
+                const rows = [headers];
+                document.querySelectorAll('#close-relatives-table tbody tr').forEach(row => {
+                    rows.push(Array.from(row.cells).map((cell, index) => index === 0 ? '' : cell.innerText.replace(/\s+/g, ' ').trim()));
+                });
+                submitButton.disabled = true;
+                submitStatus.textContent = <?= json_encode(__('Submitting changes to Google Sheets...')); ?>;
+                const endpoint = new URL(window.location.href);
+                endpoint.searchParams.set('google_sheet', '1');
+                fetch(endpoint.toString(), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Close-Relatives-Sheet-Token': <?= json_encode($close_relatives_sheet_token); ?>
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ rows })
+                }).then(response => response.json()).then(result => {
+                    submitStatus.textContent = result.success
+                        ? <?= json_encode(__('Changes submitted to Google Sheets.')); ?>
+                        : (result.message || <?= json_encode(__('Unable to submit changes to Google Sheets.')); ?>);
+                }).catch(() => {
+                    submitStatus.textContent = <?= json_encode(__('Unable to submit changes to Google Sheets.')); ?>;
+                }).finally(() => {
+                    submitButton.disabled = false;
+                });
+            });
             const resizeChart = () => {
                 chart.resize();
                 if (zoom === 1) {
@@ -232,6 +335,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             };
             window.addEventListener('resize', resizeChart);
             if (window.ResizeObserver) new ResizeObserver(resizeChart).observe(viewport);
+            renderTable();
             chart.setOption(chartOption);
         })();
     </script>
