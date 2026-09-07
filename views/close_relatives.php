@@ -29,6 +29,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
         <option value="-1" selected><?= __('All'); ?></option>
     </select>
     <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-center"><?= __('Center tree'); ?></button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-orientation"><?= __('Horizontal tree'); ?></button>
 </div>
 <p><?= __('Click a person to expand or collapse their relatives. Drag a name to move that node, or drag the background to pan.'); ?></p>
 <div class="close-relatives-legend mb-2">
@@ -39,7 +40,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 <?php if (!$data['main_person']) { ?>
     <div class="alert alert-warning"><?= __('The requested person could not be found.'); ?></div>
 <?php } else { ?>
-    <div class="close-relatives-viewport" aria-label="<?= __('Close relatives vertical tree'); ?>">
+    <div class="close-relatives-viewport" aria-label="<?= __('Close relatives tree'); ?>">
         <div class="close-relatives-canvas" id="close-relatives-canvas">
             <div class="close-relatives-chart" id="close-relatives-chart" role="img" aria-label="<?= __('Close Relatives'); ?>"></div>
         </div>
@@ -124,13 +125,20 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 buildSpouseBranch(spouseId)
             ])].filter(Boolean);
 
-            const personLabel = {
-                position: 'top',
+            let orientation = 'TB';
+            const makeLabel = () => ({
+                position: orientation === 'TB' ? 'top' : 'left',
                 verticalAlign: 'middle',
-                align: 'center',
+                align: orientation === 'TB' ? 'center' : 'right',
+                rotate: orientation === 'TB' ? 90 : 0,
                 fontSize: 12,
                 formatter: params => params.data.name
-            };
+            });
+            const makeLeavesLabel = () => ({
+                ...makeLabel(),
+                position: orientation === 'TB' ? 'bottom' : 'right',
+                align: orientation === 'TB' ? 'center' : 'left'
+            });
             const chart = echarts.init(chartElement);
             const chartOption = {
                 animationDuration: 500,
@@ -139,7 +147,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     type: 'tree',
                     data: treeData,
                     layout: 'orthogonal',
-                    orient: 'TB',
+                    orient: orientation,
                     top: '8%',
                     left: '5%',
                     bottom: '8%',
@@ -150,8 +158,8 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     expandAndCollapse: true,
                     initialTreeDepth: -1,
                     lineStyle: { color: '#59636e', width: 1.5 },
-                    label: personLabel,
-                    leaves: { label: { ...personLabel, position: 'bottom', align: 'center' } },
+                    label: makeLabel(),
+                    leaves: { label: makeLeavesLabel() },
                     emphasis: { focus: 'ancestor' }
                 }]
             };
@@ -161,7 +169,13 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 selectedDepth = depth;
                 chart.setOption({
                     ...chartOption,
-                    series: [{ ...chartOption.series[0], initialTreeDepth: depth }]
+                    series: [{
+                        ...chartOption.series[0],
+                        orient: orientation,
+                        initialTreeDepth: depth,
+                        label: makeLabel(),
+                        leaves: { label: makeLeavesLabel() }
+                    }]
                 }, true);
             };
 
@@ -186,6 +200,17 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 chart.dispatchAction({ type: 'restore' });
                 setTreeDepth(selectedDepth);
                 chart.resize();
+            });
+            const orientationButton = document.getElementById('close-relatives-orientation');
+            const updateOrientationButton = () => {
+                orientationButton.textContent = orientation === 'TB'
+                    ? <?= json_encode(__('Horizontal tree')); ?>
+                    : <?= json_encode(__('Vertical tree')); ?>;
+            };
+            orientationButton.addEventListener('click', () => {
+                orientation = orientation === 'TB' ? 'LR' : 'TB';
+                updateOrientationButton();
+                setTreeDepth(selectedDepth);
             });
             window.addEventListener('resize', () => chart.resize());
             chart.setOption(chartOption);
