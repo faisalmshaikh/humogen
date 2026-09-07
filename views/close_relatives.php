@@ -5,12 +5,12 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 
 <style>
     .close-relatives-toolbar { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
-    .close-relatives-viewport { height:720px; overflow:auto; border:1px solid #ced4da; background:#fff; touch-action:none; }
-    .close-relatives-canvas { position:relative; width:1800px; height:1200px; transform-origin:top left; }
-    .close-relatives-chart { position:absolute; inset:0; width:1800px; height:1200px; }
+    .close-relatives-viewport { width:100%; height:calc(100vh - 320px); min-height:360px; overflow:auto; border:1px solid #ced4da; background:#fff; touch-action:none; }
+    .close-relatives-canvas { position:relative; width:100%; height:100%; min-width:100%; min-height:100%; transform-origin:top left; }
+    .close-relatives-chart { position:absolute; inset:0; width:100%; height:100%; }
     .close-relatives-legend span { display:inline-block; padding:.25rem .6rem; margin-right:.5rem; border:1px solid #adb5bd; border-radius:.25rem; }
-    .close-relatives-legend .male { background:#d9efff; }
-    .close-relatives-legend .female { background:#fff6c7; }
+    .close-relatives-legend .male { background:#9ec5fe; }
+    .close-relatives-legend .female { background:#f1aeb5; }
 </style>
 
 <h1 class="my-4"><?= __('Close Relatives'); ?></h1>
@@ -31,7 +31,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-center"><?= __('Center tree'); ?></button>
     <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-orientation"><?= __('Horizontal tree'); ?></button>
 </div>
-<p><?= __('Click a person to expand or collapse their relatives. Drag a name to move that node, or drag the background to pan.'); ?></p>
+<p><?= __('Click a person to expand or collapse their relatives. Drag the background to pan, or use the mouse wheel to zoom.'); ?></p>
 <div class="close-relatives-legend mb-2">
     <span class="male"><?= __('Male'); ?></span>
     <span class="female"><?= __('Female'); ?></span>
@@ -50,6 +50,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     <script>
         (() => {
             const data = JSON.parse(document.getElementById('close-relatives-data').textContent);
+            const viewport = document.querySelector('.close-relatives-viewport');
             const canvas = document.getElementById('close-relatives-canvas');
             const chartElement = document.getElementById('close-relatives-chart');
             const nodesById = new Map(data.nodes.map(node => [Number(node.id), node]));
@@ -65,7 +66,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 element.innerHTML = value || '';
                 return element.value;
             };
-            const nodeColor = node => node.sex === 'M' ? '#d9efff' : node.sex === 'F' ? '#fff6c7' : '#eee';
+            const nodeColor = node => node.sex === 'M' ? '#9ec5fe' : node.sex === 'F' ? '#f1aeb5' : '#eee';
             const buildPersonNode = (id, children = []) => {
                 const node = nodesById.get(id);
                 if (!node) return null;
@@ -73,7 +74,6 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     id: node.id,
                     name: decodeHtml(node.name),
                     symbol: 'circle',
-                    draggable: true,
                     itemStyle: {
                         color: nodeColor(node),
                         borderColor: node.gedcom === data.main_person ? '#0d6efd' : '#68727e',
@@ -183,8 +183,17 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const applyZoom = nextZoom => {
                 zoom = Math.max(.5, Math.min(1.75, nextZoom));
                 canvas.style.transform = `scale(${zoom})`;
-                canvas.parentElement.style.minHeight = `${1200 * zoom}px`;
-                canvas.parentElement.style.minWidth = `${1800 * zoom}px`;
+                if (zoom === 1) {
+                    canvas.style.minHeight = '';
+                    canvas.style.minWidth = '';
+                    viewport.style.minHeight = '';
+                    viewport.style.minWidth = '';
+                } else {
+                    canvas.style.minHeight = `${viewport.clientHeight}px`;
+                    canvas.style.minWidth = `${viewport.clientWidth}px`;
+                    viewport.style.minHeight = `${Math.max(viewport.clientHeight, viewport.clientHeight * zoom)}px`;
+                    viewport.style.minWidth = `${Math.max(viewport.clientWidth, viewport.clientWidth * zoom)}px`;
+                }
                 document.getElementById('close-relatives-zoom-level').textContent = `${Math.round(zoom * 100)}%`;
             };
 
@@ -212,22 +221,18 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 updateOrientationButton();
                 setTreeDepth(selectedDepth);
             });
-            window.addEventListener('resize', () => chart.resize());
-            chart.setOption(chartOption);
-
-            const installNodeDragging = () => {
-                const series = chart.getModel().getSeriesByIndex(0);
-                const chartData = series && series.getData();
-                if (!chartData) return;
-                chartData.eachItemGraphicEl(graphic => {
-                    if (!graphic || graphic.__closeRelativesDragging) return;
-                    graphic.__closeRelativesDragging = true;
-                    graphic.draggable = true;
-                    graphic.cursor = 'move';
-                });
+            const resizeChart = () => {
+                chart.resize();
+                if (zoom === 1) {
+                    viewport.style.minHeight = '';
+                    viewport.style.minWidth = '';
+                } else {
+                    applyZoom(zoom);
+                }
             };
-            chart.on('finished', installNodeDragging);
-            installNodeDragging();
+            window.addEventListener('resize', resizeChart);
+            if (window.ResizeObserver) new ResizeObserver(resizeChart).observe(viewport);
+            chart.setOption(chartOption);
         })();
     </script>
 <?php } ?>
