@@ -4,7 +4,13 @@
  * June 2024: split into MVC files.
  */
 
-if (isset($_POST['send_mail']) && $register["register_allowed"] == true) {
+if (!empty($register['contact_followup'])) {
+?>
+    <div class="alert alert-info" role="alert">
+        <?= __('Someone from the admin team will reach out to you soon on the contact details provided.'); ?>
+    </div>
+<?php
+} elseif (isset($_POST['send_mail']) && $register["register_allowed"] == true) {
     if (!$register["error"]) {
 ?>
         <h2><?= __('Registration completed'); ?></h2>
@@ -21,6 +27,13 @@ if (isset($_POST['send_mail']) && $register["register_allowed"] == true) {
 }
 
 if ($register["show_form"]) {
+    if (!empty($register["error"]) && $register["register_allowed"] != true) {
+    ?>
+        <div class="alert alert-info" role="alert">
+            <?= $register["error"]; ?>
+        </div>
+    <?php
+    }
     $email = '';
     // Used in older HuMo-genealogy versions. Backwards compatible...
     if (isset($selectedFamilyTree->tree_email)) {
@@ -138,6 +151,7 @@ if ($register["show_form"]) {
                         <div class="col-sm-5">
                             <?= $humo_option["block_spam_question"]; ?>
                             <input type="text" id="register_block_spam" class="form-control" name="register_block_spam">
+                            <small class="form-text text-muted">Obtain the secret code from the Shijrah Administrators. Leave the field blank if you are unsure</small>
                         </div>
                     </div>
                 <?php } ?>

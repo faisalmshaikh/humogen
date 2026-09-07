@@ -36,6 +36,65 @@ class RegisterModel extends BaseModel
         return substr($email, 0, min(2, $atPosition)) . '***' . substr($email, $atPosition);
     }
 
+    private function hasRegistrationContact(): bool
+    {
+        $username = trim((string) ($_POST['register_name'] ?? ''));
+        $email = trim((string) ($_POST['register_mail'] ?? ''));
+        $phone = trim((string) ($_POST['register_phone'] ?? ''));
+        $validPhone = preg_match('/^(?=.*\d)[0-9+().\s-]{7,}$/', $phone) === 1;
+
+        return $username !== '' || filter_var($email, FILTER_VALIDATE_EMAIL) !== false || $validPhone;
+    }
+
+    private function sendSpamReviewNotification(array $register): void
+    {
+        $registerAddress = '';
+        if (isset($this->selectedFamilyTree->tree_email)) {
+            $registerAddress = $this->selectedFamilyTree->tree_email;
+        }
+        if ($this->humo_option['general_email']) {
+            $registerAddress = $this->humo_option['general_email'];
+        }
+        if (trim((string) $registerAddress) === '' || !filter_var($registerAddress, FILTER_VALIDATE_EMAIL)) {
+            $this->registrationMailDebug('Spam-review notification skipped because the administrator address is invalid.');
+            return;
+        }
+
+        $humo_option = $this->humo_option;
+        include_once(__DIR__ . '/../../include/mail.php');
+        $submittedEmail = trim((string) ($_POST['register_mail'] ?? ''));
+        $senderEmail = filter_var($this->humo_option['email_sender'] ?? '', FILTER_VALIDATE_EMAIL)
+            ? $this->humo_option['email_sender']
+            : $registerAddress;
+        $name = trim((string) ($_POST['register_name'] ?? ''));
+        $subject = strip_tags('HuMo-genealogy. ' . __('Registration contact review') . ': ' . $name, ENT_QUOTES);
+        $message = sprintf(__('Message sent through %s from the website.'), 'HuMo-genealogy') . "<br><br>\n";
+        $message .= __('Registration contact review') . "<br>\n";
+        $message .= __('Name') . ': ' . $this->emailEscape($name) . "<br>\n";
+        $message .= __('E-mail') . ': ' . $this->emailEscape($submittedEmail) . "<br>\n";
+        $message .= __('Phone number') . ': ' . $this->emailEscape((string) ($_POST['register_phone'] ?? '')) . "<br>\n";
+        $message .= $this->emailEscape((string) ($_POST['register_text'] ?? '')) . "<br>\n";
+        foreach (RegistrationFields::labels() as $field => $label) {
+            $message .= __($label) . ': ' . $this->emailEscape($register[$field] ?? '') . "<br>\n";
+        }
+
+        $mail->setFrom($senderEmail, $senderEmail);
+        if (filter_var($submittedEmail, FILTER_VALIDATE_EMAIL)) {
+            $mail->AddReplyTo($submittedEmail, $name);
+        }
+        $mail->addAddress($registerAddress, $registerAddress);
+        $mail->Subject = $subject;
+        $mail->msgHTML($message);
+        try {
+            $mail->send();
+        } catch (\Throwable $exception) {
+            $this->registrationMailDebug('Spam-review notification failed.', [
+                'exception' => get_class($exception),
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    }
+
     public function getFormdata(): array
     {
         $register["name"] = '';
@@ -77,6 +136,16 @@ class RegisterModel extends BaseModel
     {
         $register["show_form"] = true;
         $register["error"] = '';
+        $invalidSpamWithContact = isset($_POST['send_mail'])
+            && $register["register_allowed"] != true
+            && $this->hasRegistrationContact();
+        if ($invalidSpamWithContact) {
+            $register["show_form"] = false;
+            $register["contact_followup"] = true;
+            $this->sendSpamReviewNotification($register);
+        } elseif (isset($_POST['send_mail']) && $register["register_allowed"] != true) {
+            $register["error"] = __('Wrong answer to the block-spam question!');
+        }
         if (isset($_POST['send_mail']) && $register["register_allowed"] != true) {
             $this->registrationMailDebug('Registration submission was rejected by the registration gate.', [
                 'spam_protection_enabled' => ($this->humo_option['registration_use_spam_question'] ?? 'n') === 'y',
