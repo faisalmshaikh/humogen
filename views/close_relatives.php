@@ -8,7 +8,8 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     .close-relatives-viewport { width:100%; height:calc(100vh - 320px); min-height:360px; overflow:auto; border:1px solid #ced4da; background:#fff; touch-action:none; }
     .close-relatives-canvas { position:relative; width:100%; height:100%; min-width:100%; min-height:100%; transform-origin:top left; }
     .close-relatives-chart { position:absolute; inset:0; width:100%; height:100%; }
-    .close-relatives-table td[contenteditable="true"] { min-width:8rem; cursor:text; }
+    .close-relatives-table td[data-editable="true"] { min-width:8rem; cursor:default; }
+    .close-relatives-table td[data-editable="true"][contenteditable="true"] { cursor:text; outline:2px solid #86b7fe; outline-offset:-2px; }
     .close-relatives-table td:first-child { min-width:3rem; white-space:nowrap; }
     .close-relatives-legend span { display:inline-block; padding:.25rem .6rem; margin-right:.5rem; border:1px solid #adb5bd; border-radius:.25rem; }
     .close-relatives-legend .male { background:#9ec5fe; }
@@ -55,7 +56,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
         <table class="table table-sm table-bordered close-relatives-table" id="close-relatives-table">
             <thead>
                 <tr>
-                    <th><?= __('Person Popup'); ?></th>
+                    <th aria-label="<?= __('Person Popup'); ?>"></th>
                     <th><?= __('First Name'); ?></th>
                     <th><?= __('GEDCOM Number'); ?></th>
                     <th><?= __('Birth Date'); ?></th>
@@ -182,16 +183,40 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     if (!node) return;
                     const relation = relationById.get(id) || 'Relative';
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td contenteditable="true">${node.popup || ''}</td>`
-                        + `<td contenteditable="true"><a href="${node.family_url}">${node.first_name || node.name}</a></td>`
-                        + `<td>${escapeHtml(node.gedcom)}</td>`
-                        + `<td contenteditable="true">${escapeHtml(node.birth_date)}</td>`
-                        + `<td contenteditable="true">${escapeHtml(node.death_date)}</td>`
-                        + `<td contenteditable="true">${escapeHtml(node.phone)}</td>`
-                        + `<td contenteditable="true">${escapeHtml(node.address)}</td>`
-                        + `<td contenteditable="true">${escapeHtml(relation)}</td>`;
-                    row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+                    row.innerHTML = `<td data-editable="false">${node.popup || ''}</td>`
+                        + `<td data-editable="true"><a href="${escapeHtml(node.family_url)}">${escapeHtml(node.first_name || node.name)}</a></td>`
+                        + `<td data-editable="false">${escapeHtml(node.gedcom)}</td>`
+                        + `<td data-editable="true">${escapeHtml(node.birth_date)}</td>`
+                        + `<td data-editable="true">${escapeHtml(node.death_date)}</td>`
+                        + `<td data-editable="true">${escapeHtml(node.phone)}</td>`
+                        + `<td data-editable="true">${escapeHtml(node.address)}</td>`
+                        + `<td data-editable="false">${escapeHtml(relation)}</td>`;
+                    row.querySelectorAll('td[data-editable="true"]').forEach(cell => {
                         cell.spellcheck = false;
+                        cell.contentEditable = 'false';
+                        cell.addEventListener('dblclick', event => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            cell.contentEditable = 'true';
+                            cell.focus();
+                        });
+                        cell.addEventListener('blur', () => {
+                            cell.contentEditable = 'false';
+                        });
+                    });
+                    const nameLink = row.cells[1].querySelector('a');
+                    let navigationTimer;
+                    nameLink.addEventListener('click', event => {
+                        event.preventDefault();
+                        clearTimeout(navigationTimer);
+                        navigationTimer = setTimeout(() => { window.location.href = nameLink.href; }, 250);
+                    });
+                    nameLink.addEventListener('dblclick', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        clearTimeout(navigationTimer);
+                        row.cells[1].contentEditable = 'true';
+                        row.cells[1].focus();
                     });
                     body.appendChild(row);
                 });
@@ -296,7 +321,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const submitButton = document.getElementById('close-relatives-submit');
             const submitStatus = document.getElementById('close-relatives-submit-status');
             submitButton.addEventListener('click', () => {
-                const headers = ['Person Popup', 'First Name', 'GEDCOM Number', 'Birth Date', 'Death Date', 'Phone Number', 'Address', 'Relation Name'];
+                const headers = ['', 'First Name', 'GEDCOM Number', 'Birth Date', 'Death Date', 'Phone Number', 'Address', 'Relation Name'];
                 const rows = [headers];
                 document.querySelectorAll('#close-relatives-table tbody tr').forEach(row => {
                     rows.push(Array.from(row.cells).map((cell, index) => index === 0 ? '' : cell.innerText.replace(/\s+/g, ' ').trim()));
@@ -313,7 +338,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         'X-Close-Relatives-Sheet-Token': <?= json_encode($close_relatives_sheet_token); ?>
                     },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ rows })
+                    body: JSON.stringify({ rows, mainPerson: data.main_person })
                 }).then(response => response.json()).then(result => {
                     submitStatus.textContent = result.success
                         ? <?= json_encode(__('Changes submitted to Google Sheets.')); ?>

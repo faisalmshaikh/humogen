@@ -7,7 +7,6 @@ use Genealogy\App\Model\CloseRelativesModel;
 class CloseRelativesController
 {
     private const GOOGLE_SHEET_ID = '16uvHsVK1BjdaP2x8WE0xpuxxMGPyQci5WOmS9ls4zlc';
-    private const GOOGLE_WORKSHEET = 'CloseRelatives';
     private const GOOGLE_SERVICE_ACCOUNT_FILE = __DIR__ . '/../../../../service-account.json';
 
     private $config;
@@ -37,9 +36,14 @@ class CloseRelativesController
 
             $payload = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
             $submittedRows = $payload['rows'] ?? null;
+            $mainPerson = $payload['mainPerson'] ?? '';
             if (!is_array($submittedRows) || count($submittedRows) < 2 || count($submittedRows) > 5000) {
                 throw new \RuntimeException('Invalid close relatives table data.');
             }
+            if (!is_string($mainPerson) || !preg_match('/^[A-Za-z0-9_-]+$/', $mainPerson)) {
+                throw new \RuntimeException('Invalid main person GEDCOM number.');
+            }
+            $worksheetTitle = $mainPerson;
 
             $rows = [];
             foreach (array_slice($submittedRows, 1) as $row) {
@@ -75,7 +79,7 @@ class CloseRelativesController
             ]);
             $worksheetExists = false;
             foreach ($spreadsheet->getSheets() as $sheet) {
-                if ($sheet->getProperties()->getTitle() === self::GOOGLE_WORKSHEET) {
+                if ($sheet->getProperties()->getTitle() === $worksheetTitle) {
                     $worksheetExists = true;
                     break;
                 }
@@ -87,7 +91,7 @@ class CloseRelativesController
                         'requests' => [new \Google\Service\Sheets\Request([
                             'addSheet' => new \Google\Service\Sheets\AddSheetRequest([
                                 'properties' => new \Google\Service\Sheets\SheetProperties([
-                                    'title' => self::GOOGLE_WORKSHEET
+                                    'title' => $worksheetTitle
                                 ])
                             ])
                         ])]
@@ -95,11 +99,11 @@ class CloseRelativesController
                 );
             }
 
-            $range = "'" . self::GOOGLE_WORKSHEET . "'!A:H";
-            $header = ['Person Popup', 'First Name', 'GEDCOM Number', 'Birth Date', 'Death Date', 'Phone Number', 'Address', 'Relation Name'];
+            $range = "'" . str_replace("'", "''", $worksheetTitle) . "'!A:H";
+            $header = ['', 'First Name', 'GEDCOM Number', 'Birth Date', 'Death Date', 'Phone Number', 'Address', 'Relation Name'];
             $existingHeader = $sheets->spreadsheets_values->get(
                 self::GOOGLE_SHEET_ID,
-                "'" . self::GOOGLE_WORKSHEET . "'!A1:H1"
+                "'" . str_replace("'", "''", $worksheetTitle) . "'!A1:H1"
             )->getValues() ?: [];
             $values = empty($existingHeader) ? array_merge([$header], $rows) : $rows;
             $sheets->spreadsheets_values->append(
@@ -109,7 +113,7 @@ class CloseRelativesController
                 ['valueInputOption' => 'RAW', 'insertDataOption' => 'INSERT_ROWS']
             );
 
-            echo json_encode(['success' => true, 'worksheet' => self::GOOGLE_WORKSHEET, 'rows' => count($rows)]);
+            echo json_encode(['success' => true, 'worksheet' => $worksheetTitle, 'rows' => count($rows)]);
         } catch (\Throwable $exception) {
             error_log('Close relatives Google Sheets submission failed: ' . $exception->getMessage());
             http_response_code(400);
