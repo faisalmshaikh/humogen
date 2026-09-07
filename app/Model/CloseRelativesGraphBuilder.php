@@ -107,6 +107,30 @@ final class CloseRelativesGraphBuilder
             }
         }
 
+        // Keep the main person's siblings and children in the graph so the
+        // view can place them under their dedicated group nodes.
+        foreach ($parents($mainPersonId) as $parentId) {
+            foreach ($children($parentId) as $siblingId) {
+                if ($siblingId === $mainPersonId) {
+                    continue;
+                }
+                $addNode($siblingId);
+                $addEdge($parentId, $siblingId, 'Sibling');
+                foreach ($children($siblingId) as $nieceOrNephewId) {
+                    $addNode($nieceOrNephewId);
+                    $addEdge($siblingId, $nieceOrNephewId, 'Child');
+                }
+            }
+        }
+        foreach ($children($mainPersonId) as $childId) {
+            $addNode($childId);
+            $addEdge($mainPersonId, $childId, 'Child');
+            foreach ($children($childId) as $grandchildId) {
+                $addNode($grandchildId);
+                $addEdge($childId, $grandchildId, 'Child');
+            }
+        }
+
         $addSiblingBranch = function (int $personId) use ($siblings, $children, $mother, $addNode, $addEdge): void {
             foreach ($siblings($personId) as $siblingId) {
                 $addNode($siblingId);
@@ -122,7 +146,6 @@ final class CloseRelativesGraphBuilder
             }
         };
 
-        $addSiblingBranch($mainPersonId);
         foreach ($parents($mainPersonId) as $parentId) {
             $addSiblingBranch($parentId);
         }

@@ -85,7 +85,8 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const chartElement = document.getElementById('close-relatives-chart');
             const nodesById = new Map(data.nodes.map(node => [Number(node.id), node]));
             const mainNode = data.nodes.find(node => node.gedcom === data.main_person);
-            const familyEdges = data.edges.filter(edge => edge.label !== 'Spouse');
+            const familyEdges = data.edges.filter(edge => !['Spouse', 'Sibling'].includes(edge.label));
+            const siblingEdges = data.edges.filter(edge => edge.label === 'Sibling');
             const spouseEdge = data.edges.find(edge => edge.label === 'Spouse');
             const parentsOf = id => [...new Set(familyEdges.filter(edge => Number(edge.to) === id).map(edge => Number(edge.from)))];
             const childrenOf = id => [...new Set(familyEdges.filter(edge => Number(edge.from) === id).map(edge => Number(edge.to)))];
@@ -114,12 +115,30 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     children: children.filter(Boolean)
                 };
             };
+            const buildGroupNode = (id, label, children) => ({
+                id,
+                name: label,
+                isGroup: true,
+                symbol: 'roundRect',
+                symbolSize: [80, 24],
+                itemStyle: { color: '#e9ecef', borderColor: '#68727e', borderWidth: 1 },
+                children: children.filter(Boolean)
+            });
 
             const mainId = mainNode ? Number(mainNode.id) : null;
             const mainParents = mainId === null ? [] : parentsOf(mainId);
             const fatherId = mainParents.find(id => nodeSex(id) === 'M');
             const motherId = mainParents.find(id => nodeSex(id) === 'F');
             const spouseId = spouseEdge ? Number(spouseEdge.to) : null;
+            const childrenWithDescendants = (personId, relation) => childrenOf(personId)
+                .map(childId => buildPersonNode(
+                    childId,
+                    childrenOf(childId).map(grandchildId => buildPersonNode(grandchildId, [], `${relation} grandchild`)),
+                    relation
+                ));
+            const siblingIds = [...new Set(siblingEdges
+                .filter(edge => parentsOf(mainId).includes(Number(edge.from)))
+                .map(edge => Number(edge.to)))];
 
             const buildParentBranch = (parentId, side) => {
                 if (parentId === undefined) return null;
@@ -159,12 +178,23 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const treeData = [buildPersonNode(mainId, [
                 buildParentBranch(fatherId, 'Paternal'),
                 buildParentBranch(motherId, 'Maternal'),
-                buildSpouseBranch(spouseId)
+                buildSpouseBranch(spouseId),
+                buildGroupNode('siblings-group', 'Siblings', siblingIds.map(id => buildPersonNode(
+                    id,
+                    childrenWithDescendants(id, 'Niece/nephew'),
+                    nodeSex(id) === 'M' ? 'Brother' : 'Sister'
+                ))),
+                buildGroupNode('children-group', 'Children', childrenWithDescendants(mainId, 'Grandchild'))
             ], 'Main person')].filter(Boolean);
 
             const tableNodeIds = [];
             const collectTreeNodes = nodes => nodes.forEach(node => {
-                if (!node || tableNodeIds.includes(Number(node.id))) return;
+                if (!node) return;
+                if (node.isGroup) {
+                    collectTreeNodes(node.children || []);
+                    return;
+                }
+                if (tableNodeIds.includes(Number(node.id))) return;
                 tableNodeIds.push(Number(node.id));
                 collectTreeNodes(node.children || []);
             });
