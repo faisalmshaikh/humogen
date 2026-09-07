@@ -75,6 +75,21 @@ final class CloseRelativesGraphBuilder
         if ($spouseIds) {
             $addNode($spouseIds[0]);
             $addEdge($mainPersonId, $spouseIds[0], 'Spouse', 'dotted');
+
+            // The vertical close-relatives tree also shows the spouse's mother
+            // and her other children beneath the spouse branch.
+            foreach ($parents($spouseIds[0]) as $spouseParentId) {
+                if (($people[$spouseParentId]['sex'] ?? '') !== 'F') {
+                    continue;
+                }
+                foreach ($children($spouseParentId) as $spouseSiblingId) {
+                    if ($spouseSiblingId === $spouseIds[0]) {
+                        continue;
+                    }
+                    $addNode($spouseSiblingId);
+                    $addEdge($spouseParentId, $spouseSiblingId);
+                }
+            }
         }
 
         $parentTargets = array_values(array_unique(array_merge([$mainPersonId], $spouseIds ? [$spouseIds[0]] : [])));

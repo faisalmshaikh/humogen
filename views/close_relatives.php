@@ -23,10 +23,10 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     <select class="form-select form-select-sm w-auto" id="close-relatives-depth">
         <option value="1">1</option>
         <option value="2">2</option>
-        <option value="3" selected>3</option>
+        <option value="3">3</option>
         <option value="4">4</option>
         <option value="5">5</option>
-        <option value="-1"><?= __('All'); ?></option>
+        <option value="-1" selected><?= __('All'); ?></option>
     </select>
     <button type="button" class="btn btn-sm btn-outline-secondary" id="close-relatives-center"><?= __('Center tree'); ?></button>
 </div>
@@ -39,7 +39,7 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 <?php if (!$data['main_person']) { ?>
     <div class="alert alert-warning"><?= __('The requested person could not be found.'); ?></div>
 <?php } else { ?>
-    <div class="close-relatives-viewport" aria-label="<?= __('Close relatives radial tree'); ?>">
+    <div class="close-relatives-viewport" aria-label="<?= __('Close relatives vertical tree'); ?>">
         <div class="close-relatives-canvas" id="close-relatives-canvas">
             <div class="close-relatives-chart" id="close-relatives-chart" role="img" aria-label="<?= __('Close Relatives'); ?>"></div>
         </div>
@@ -53,15 +53,11 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const chartElement = document.getElementById('close-relatives-chart');
             const nodesById = new Map(data.nodes.map(node => [Number(node.id), node]));
             const mainNode = data.nodes.find(node => node.gedcom === data.main_person);
-            const neighbors = new Map(data.nodes.map(node => [Number(node.id), []]));
-
-            data.edges.filter(edge => edge.label !== 'Spouse').forEach(edge => {
-                const from = Number(edge.from);
-                const to = Number(edge.to);
-                if (!neighbors.has(from) || !neighbors.has(to)) return;
-                neighbors.get(from).push(to);
-                neighbors.get(to).push(from);
-            });
+            const familyEdges = data.edges.filter(edge => edge.label !== 'Spouse');
+            const spouseEdge = data.edges.find(edge => edge.label === 'Spouse');
+            const parentsOf = id => [...new Set(familyEdges.filter(edge => Number(edge.to) === id).map(edge => Number(edge.from)))];
+            const childrenOf = id => [...new Set(familyEdges.filter(edge => Number(edge.from) === id).map(edge => Number(edge.to)))];
+            const nodeSex = id => nodesById.get(id)?.sex || '';
 
             const decodeHtml = value => {
                 const element = document.createElement('textarea');
@@ -69,15 +65,9 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 return element.value;
             };
             const nodeColor = node => node.sex === 'M' ? '#d9efff' : node.sex === 'F' ? '#fff6c7' : '#eee';
-            const buildBranch = (id, parentId, seen) => {
-                if (seen.has(id)) return null;
-                seen.add(id);
+            const buildPersonNode = (id, children = []) => {
                 const node = nodesById.get(id);
                 if (!node) return null;
-                const children = [...new Set(neighbors.get(id) || [])]
-                    .filter(childId => childId !== parentId && !seen.has(childId))
-                    .map(childId => buildBranch(childId, id, seen))
-                    .filter(Boolean);
                 return {
                     id: node.id,
                     name: decodeHtml(node.name),
@@ -88,27 +78,56 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         borderColor: node.gedcom === data.main_person ? '#0d6efd' : '#68727e',
                         borderWidth: node.gedcom === data.main_person ? 3 : 1
                     },
-                    children
+                    children: children.filter(Boolean)
                 };
             };
 
-            const seen = new Set();
-            const roots = [mainNode]
-                .filter(Boolean)
-                .map(node => buildBranch(Number(node.id), null, seen))
-                .filter(Boolean);
-            const treeData = [{ id: 'close-relatives-root', name: '', symbol: 'none', label: { show: false }, children: roots }];
-            data.nodes.forEach(node => {
-                if (!seen.has(Number(node.id))) {
-                    const branch = buildBranch(Number(node.id), null, seen);
-                    if (branch) treeData[0].children.push(branch);
-                }
-            });
+            const mainId = mainNode ? Number(mainNode.id) : null;
+            const mainParents = mainId === null ? [] : parentsOf(mainId);
+            const fatherId = mainParents.find(id => nodeSex(id) === 'M');
+            const motherId = mainParents.find(id => nodeSex(id) === 'F');
+            const spouseId = spouseEdge ? Number(spouseEdge.to) : null;
+
+            const buildParentBranch = parentId => {
+                if (parentId === undefined) return null;
+                const grandparents = parentsOf(parentId)
+                    .sort((left, right) => (nodeSex(left) === 'M' ? 0 : 1) - (nodeSex(right) === 'M' ? 0 : 1))
+                    .slice(0, 2);
+                const grandmotherId = grandparents.find(id => nodeSex(id) === 'F');
+                const auntsAndUncles = grandmotherId === undefined ? [] : childrenOf(grandmotherId)
+                    .filter(id => id !== parentId)
+                    .map(id => buildPersonNode(id, childrenOf(id).map(childId => buildPersonNode(childId))));
+                const grandparentNodes = grandparents.map(grandparentId => buildPersonNode(
+                    grandparentId,
+                    grandparentId === grandmotherId ? auntsAndUncles : []
+                ));
+                return buildPersonNode(parentId, grandparentNodes);
+            };
+
+            const buildSpouseBranch = spousePersonId => {
+                if (spousePersonId === null) return null;
+                const spouseParents = parentsOf(spousePersonId);
+                const spouseFatherId = spouseParents.find(id => nodeSex(id) === 'M');
+                const spouseMotherId = spouseParents.find(id => nodeSex(id) === 'F');
+                const spouseMotherChildren = spouseMotherId === undefined ? [] : childrenOf(spouseMotherId)
+                    .filter(id => id !== spousePersonId)
+                    .map(id => buildPersonNode(id));
+                return buildPersonNode(spousePersonId, [
+                    spouseFatherId === undefined ? null : buildPersonNode(spouseFatherId),
+                    spouseMotherId === undefined ? null : buildPersonNode(spouseMotherId, spouseMotherChildren)
+                ]);
+            };
+
+            const treeData = [buildPersonNode(mainId, [
+                buildParentBranch(fatherId),
+                buildParentBranch(motherId),
+                buildSpouseBranch(spouseId)
+            ])].filter(Boolean);
 
             const personLabel = {
-                position: 'left',
+                position: 'top',
                 verticalAlign: 'middle',
-                align: 'right',
+                align: 'center',
                 fontSize: 12,
                 formatter: params => params.data.name
             };
@@ -119,24 +138,25 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 series: [{
                     type: 'tree',
                     data: treeData,
-                    layout: 'radial',
-                    top: '3%',
-                    left: '3%',
-                    bottom: '3%',
-                    right: '3%',
+                    layout: 'orthogonal',
+                    orient: 'TB',
+                    top: '8%',
+                    left: '5%',
+                    bottom: '8%',
+                    right: '5%',
                     symbol: 'circle',
                     symbolSize: 9,
                     roam: true,
                     expandAndCollapse: true,
-                    initialTreeDepth: 3,
+                    initialTreeDepth: -1,
                     lineStyle: { color: '#59636e', width: 1.5 },
                     label: personLabel,
-                    leaves: { label: { ...personLabel, position: 'right', align: 'left' } },
+                    leaves: { label: { ...personLabel, position: 'bottom', align: 'center' } },
                     emphasis: { focus: 'ancestor' }
                 }]
             };
 
-            let selectedDepth = 3;
+            let selectedDepth = -1;
             const setTreeDepth = depth => {
                 selectedDepth = depth;
                 chart.setOption({
