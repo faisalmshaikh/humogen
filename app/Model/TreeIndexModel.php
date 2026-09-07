@@ -53,7 +53,12 @@ class TreeIndexModel extends BaseModel
             $temp = $this->selected_family_tree();
 
             $path_tmp = $this->processLinks->get_link($this->uri_path, 'login');
+            $path_register = $this->processLinks->get_link($this->uri_path, 'register');
             $temp .= '<h2><a href="' . $path_tmp . '">' . __('Select another family tree, or login for the selected family tree.') . '</a></h2>';
+            $temp .= '<div class="mt-3 d-flex justify-content-center gap-2">'
+                . '<a class="btn btn-primary" href="' . $path_tmp . '">' . __('Login') . '</a>'
+                . '<a class="btn btn-secondary" href="' . $path_register . '">' . __('Register') . '</a>'
+                . '</div>';
 
             $item_array[0]['position'] = 'center';
             $item_array[0]['header'] = '';
