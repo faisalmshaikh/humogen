@@ -34,6 +34,7 @@ class ProcessLinks
         ['page' => 'index', 'file_rewrite' => 'index', 'file' => 'index.php', 'seperator' => '?'],
         ['page' => 'language', 'file_rewrite' => 'index', 'file' => 'index.php', 'seperator' => '?'],
         ['page' => 'latest_changes', 'file_rewrite' => 'latest_changes', 'file' => 'index.php?page=latest_changes', 'seperator' => '&amp;'],
+        ['page' => 'learning_center', 'file_rewrite' => 'learning_center', 'file' => 'index.php?page=learning_center', 'seperator' => '&amp;'],
         ['page' => 'list', 'file_rewrite' => 'list', 'file' => 'index.php?page=list', 'seperator' => '&amp;'],
         ['page' => 'list_names', 'file_rewrite' => 'list_names', 'file' => 'index.php?page=list_names', 'seperator' => '&amp;'],
         ['page' => 'list_places_families', 'file_rewrite' => 'list_places_families', 'file' => 'index.php?page=list_places_families', 'seperator' => '&amp;'],

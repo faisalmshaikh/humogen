@@ -9,6 +9,7 @@
 // Allready prepared controller. But can't use it yet because of tree_index and mainindex.
 $mainindex = new \Genealogy\App\Model\TreeIndexModel($config);
 $tree_index["items"] = $mainindex->show_tree_index();
+$learning_center_path = $processLinks->get_link($uri_path, 'learning_center');
 
 
 // *** Show slideshow ***
@@ -42,6 +43,14 @@ if (!$left || !$right) {
     $middle = "col-sm-9";
 }
 ?>
+
+<div class="row m-lg-1 pt-3">
+    <div class="col-12 text-center">
+        <a class="btn btn-outline-primary" href="<?= htmlspecialchars($learning_center_path, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
+            <?= __('Learning Center'); ?>
+        </a>
+    </div>
+</div>
 
 <div class="row m-lg-1 py-3 genealogy_row">
     <!--  Left column -->

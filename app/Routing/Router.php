@@ -34,6 +34,7 @@ class Router
         ['path' => 'tree_index', 'title' => 'Family tree index', 'page' => 'tree_index', 'vars' => 'select_tree_id'],
         ['path' => 'index', 'title' => 'Main index', 'page' => 'index'],
         ['path' => 'latest_changes', 'title' => 'Latest changes', 'page' => 'latest_changes'],
+        ['path' => 'learning_center', 'title' => 'Learning Center', 'page' => 'learning_center'],
 
         // *** Must be before places and before list (because of list in link) ***
         ['path' => 'list_places_families', 'title' => 'Places', 'page' => 'list_places_families'],
