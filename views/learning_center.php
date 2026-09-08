@@ -171,6 +171,16 @@ $sections = [
 ];
 ?>
 
+<style>
+    .learning-center .accordion-button {
+        font-weight: 600;
+    }
+
+    .learning-center .accordion-body {
+        color: #6c757d;
+    }
+</style>
+
 <div class="container-fluid py-3 learning-center">
     <div class="text-center mb-4">
         <h1><?= __('Learning Center'); ?></h1>
