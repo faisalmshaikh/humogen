@@ -217,15 +217,24 @@ class RegisterModel extends BaseModel
             }
 
             if (!$register["error"]) {
-                $register["error"] = __(RegistrationValidator::usernameError((string) $_POST["register_name"]));
+                $validationError = RegistrationValidator::usernameError((string) $_POST["register_name"]);
+                if ($validationError !== '') {
+                    $register["error"] = __($validationError);
+                }
             }
 
             if (!$register["error"]) {
-                $register["error"] = __(RegistrationValidator::birthDateError($register['register_birth_date']));
+                $validationError = RegistrationValidator::birthDateError($register['register_birth_date']);
+                if ($validationError !== '') {
+                    $register["error"] = __($validationError);
+                }
             }
 
             if (!$register["error"]) {
-                $register["error"] = __(RegistrationValidator::maritalStatusError($register['register_marital_status']));
+                $validationError = RegistrationValidator::maritalStatusError($register['register_marital_status']);
+                if ($validationError !== '') {
+                    $register["error"] = __($validationError);
+                }
             }
 
             $password = (string)($_POST["register_password"] ?? '');
