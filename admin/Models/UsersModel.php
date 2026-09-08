@@ -81,7 +81,7 @@ class UsersModel extends AdminBaseModel
 
                 $user_prep = $this->dbh->prepare("INSERT INTO humo_users SET
                     user_name=:add_username, user_mail=:add_usermail,
-                    user_password_salted=:add_password_salted, user_group_id=:add_group_id");
+                    user_password_salted=:add_password_salted, user_group_id=:add_group_id, user_status='A'");
                 $user_prep->bindValue(':add_username', $add_username, PDO::PARAM_STR);
                 $user_prep->bindValue(':add_usermail', $_POST["add_usermail"]);
                 $hashToStoreInDb = password_hash($add_password, PASSWORD_DEFAULT);

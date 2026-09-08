@@ -97,6 +97,52 @@ class RegisterModel extends BaseModel
         }
     }
 
+    private function createInactiveRegistration(array $register): void
+    {
+        $username = trim((string) ($_POST['register_name'] ?? ''));
+        if ($username === '') {
+            $contactSeed = (string) ($_POST['register_mail'] ?? '') . '|'
+                . (string) ($_POST['register_phone'] ?? '') . '|' . random_bytes(16);
+            $username = 'pending_' . substr(hash('sha256', $contactSeed), 0, 16);
+        }
+
+        $existing = $this->dbh->prepare('SELECT user_id FROM humo_users WHERE user_name = :user_name');
+        $existing->execute([':user_name' => $username]);
+        if ($existing->fetch(PDO::FETCH_OBJ)) {
+            return;
+        }
+
+        $password = (string) ($_POST['register_password'] ?? '');
+        if ($password === '') {
+            $password = bin2hex(random_bytes(32));
+        }
+        $sql = 'INSERT INTO humo_users
+            (user_name, user_remark, user_register_date, user_mail, user_password_salted, user_group_id,
+             user_father_name, user_mother_name, user_birth_date, user_reference_name, user_address,
+             user_marital_status, user_paternal_grandparent_names, user_maternal_grandparent_names, user_phone, user_status)
+            VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_password_salted, :user_group_id,
+                    :user_father_name, :user_mother_name, :user_birth_date, :user_reference_name, :user_address,
+                    :user_marital_status, :user_paternal_grandparent_names, :user_maternal_grandparent_names, :user_phone, :user_status)';
+        $stmt = $this->dbh->prepare($sql);
+        $values = [
+            ':user_name' => $username,
+            ':user_remark' => $_POST['register_text'] ?? '',
+            ':user_register_date' => date('Y-m-d H:i'),
+            ':user_mail' => $_POST['register_mail'] ?? '',
+            ':user_password_salted' => password_hash($password, PASSWORD_DEFAULT),
+            ':user_group_id' => $this->humo_option['visitor_registration_group'],
+            ':user_status' => 'I',
+        ];
+        foreach (RegistrationFields::names() as $field) {
+            $fieldValue = $register[$field] ?? '';
+            if ($field === 'register_birth_date' && $fieldValue === '') {
+                $fieldValue = null;
+            }
+            $values[':' . RegistrationFields::column($field)] = $fieldValue;
+        }
+        $stmt->execute($values);
+    }
+
     public function getFormdata(): array
     {
         $register["name"] = '';
@@ -149,6 +195,7 @@ class RegisterModel extends BaseModel
         if ($invalidSpamWithContact) {
             $register["show_form"] = false;
             $register["contact_followup"] = true;
+            $this->createInactiveRegistration($register);
             $this->sendSpamReviewNotification($register);
         } elseif (isset($_POST['send_mail']) && $register["register_allowed"] != true) {
             $register["error"] = __('Wrong answer to the block-spam question!');
@@ -208,10 +255,10 @@ class RegisterModel extends BaseModel
                 $sql = "INSERT INTO humo_users 
                     (user_name, user_remark, user_register_date, user_mail, user_password_salted, user_group_id,
                      user_father_name, user_mother_name, user_birth_date, user_reference_name, user_address,
-                     user_marital_status, user_paternal_grandparent_names, user_maternal_grandparent_names, user_phone)
+                     user_marital_status, user_paternal_grandparent_names, user_maternal_grandparent_names, user_phone, user_status)
                     VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_password_salted, :user_group_id,
                             :user_father_name, :user_mother_name, :user_birth_date, :user_reference_name, :user_address,
-                            :user_marital_status, :user_paternal_grandparent_names, :user_maternal_grandparent_names, :user_phone)";
+                            :user_marital_status, :user_paternal_grandparent_names, :user_maternal_grandparent_names, :user_phone, :user_status)";
                 $stmt = $this->dbh->prepare($sql);
                 $values = [
                     ':user_name' => $_POST["register_name"],
@@ -219,7 +266,8 @@ class RegisterModel extends BaseModel
                     ':user_register_date' => $user_register_date,
                     ':user_mail' => $_POST["register_mail"],
                     ':user_password_salted' => $hashToStoreInDb,
-                    ':user_group_id' => $this->humo_option["visitor_registration_group"]
+                    ':user_group_id' => $this->humo_option["visitor_registration_group"],
+                    ':user_status' => 'A'
                 ];
                 foreach (RegistrationFields::names() as $field) {
                     $fieldValue = $register[$field];

@@ -28,6 +28,10 @@ class IndexModel
         $index['fault'] = false;
         if (isset($_POST["username"]) && isset($_POST["password"])) {
             $resultDb = $db_functions->get_user($_POST["username"], $_POST["password"]);
+            if ($resultDb && strtoupper((string) ($resultDb->user_status ?? '')) !== 'A') {
+                $resultDb = false;
+                $index['fault'] = true;
+            }
             if ($resultDb) {
                 $valid_user = true;
 

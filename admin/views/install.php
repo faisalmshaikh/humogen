@@ -411,13 +411,13 @@ if (isset($_POST['install_tables2'])) {
         echo '<br>';
 
         $hashToStoreInDb = password_hash($_POST['password_admin'], PASSWORD_DEFAULT);
-        $dbh->query("INSERT INTO humo_users (user_name, user_password_salted, user_group_id) values ('" . $_POST['username_admin'] . "','" . $hashToStoreInDb . "','1')");
+        $dbh->query("INSERT INTO humo_users (user_name, user_password_salted, user_group_id, user_status) values ('" . $_POST['username_admin'] . "','" . $hashToStoreInDb . "','1','A')");
 
         $hashToStoreInDb = password_hash($_POST['password_family'], PASSWORD_DEFAULT);
-        $dbh->query("INSERT INTO humo_users (user_name, user_password_salted, user_group_id) values ('" . $_POST['username_family'] . "','" . $hashToStoreInDb . "','2')");
+        $dbh->query("INSERT INTO humo_users (user_name, user_password_salted, user_group_id, user_status) values ('" . $_POST['username_family'] . "','" . $hashToStoreInDb . "','2','A')");
 
         $hashToStoreInDb = password_hash('guest', PASSWORD_DEFAULT);
-        $dbh->query("INSERT INTO humo_users (user_name, user_password_salted, user_group_id) values ('guest','" . $hashToStoreInDb . "','3')");
+        $dbh->query("INSERT INTO humo_users (user_name, user_password_salted, user_group_id, user_status) values ('guest','" . $hashToStoreInDb . "','3','A')");
     }
 
     if (!$install['table_cms_menu'] || isset($_POST["table_cms_menu"])) {
