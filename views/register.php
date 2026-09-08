@@ -68,9 +68,17 @@ if ($register["show_form"]) {
         <div class="container">
             <form action="<?= $path; ?>" method="post">
                 <div class="mb-2 row">
-                    <label for="name" class="col-sm-3 col-form-label"><?= __('Name'); ?></label>
+                    <label for="username" class="col-sm-3 col-form-label"><?= __('Username'); ?></label>
                     <div class="col-sm-5">
-                        <input type="text" id="name" class="form-control" name="register_name" value="<?= htmlspecialchars($register["name"], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" maxlength="25" pattern="[A-Za-z0-9._+\-]+" required title="<?= __('Use only letters, numbers, and - _ . + characters.'); ?>">
+                        <input type="text" id="username" class="form-control" name="register_name" value="<?= htmlspecialchars($register["name"], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" maxlength="25" pattern="[A-Za-z0-9._+\-]+" required title="<?= __('Use only letters, numbers, and - _ . + characters.'); ?>">
+                        <small class="form-text text-muted">Username must not have spaces. It may be alphanumeric and may limited special characters such as + - and .</small>
+                    </div>
+                </div>
+
+                <div class="mb-2 row">
+                    <label for="register_full_name" class="col-sm-3 col-form-label"><?= __('Full Name'); ?></label>
+                    <div class="col-sm-5">
+                        <input type="text" id="register_full_name" class="form-control" name="register_full_name" value="<?= htmlspecialchars($register["full_name"], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" maxlength="100">
                     </div>
                 </div>
 

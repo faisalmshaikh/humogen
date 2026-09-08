@@ -67,10 +67,12 @@ class RegisterModel extends BaseModel
             ? $this->humo_option['email_sender']
             : $registerAddress;
         $name = trim((string) ($_POST['register_name'] ?? ''));
+        $fullName = trim((string) ($_POST['register_full_name'] ?? ''));
         $subject = strip_tags('HuMo-genealogy. ' . __('Registration contact review') . ': ' . $name, ENT_QUOTES);
         $message = sprintf(__('Message sent through %s from the website.'), 'HuMo-genealogy') . "<br><br>\n";
         $message .= __('Registration contact review') . "<br>\n";
-        $message .= __('Name') . ': ' . $this->emailEscape($name) . "<br>\n";
+        $message .= __('Username') . ': ' . $this->emailEscape($name) . "<br>\n";
+        $message .= __('Full Name') . ': ' . $this->emailEscape($fullName) . "<br>\n";
         $message .= __('E-mail') . ': ' . $this->emailEscape($submittedEmail) . "<br>\n";
         $message .= __('Phone number') . ': ' . $this->emailEscape((string) ($_POST['register_phone'] ?? '')) . "<br>\n";
         $message .= $this->emailEscape((string) ($_POST['register_text'] ?? '')) . "<br>\n";
@@ -100,6 +102,11 @@ class RegisterModel extends BaseModel
         $register["name"] = '';
         if (isset($_POST['register_name'])) {
             $register["name"] = $_POST['register_name'];
+        }
+
+        $register["full_name"] = '';
+        if (isset($_POST['register_full_name'])) {
+            $register["full_name"] = trim((string) $_POST['register_full_name']);
         }
 
         $register["mail"] = '';
@@ -255,7 +262,8 @@ class RegisterModel extends BaseModel
                 $register_message = sprintf(__('Message sent through %s from the website.'), 'HuMo-genealogy');
                 $register_message .= "<br><br>\n";
                 $register_message .= __('New registered user') . "<br>\n";
-                $register_message .= __('Name') . ':' . $this->emailEscape($_POST['register_name']) . "<br>\n";
+                $register_message .= __('Username') . ': ' . $this->emailEscape($_POST['register_name']) . "<br>\n";
+                $register_message .= __('Full Name') . ': ' . $this->emailEscape((string) ($_POST['register_full_name'] ?? '')) . "<br>\n";
                 $register_message .= __('E-mail') . ": <a href='mailto:" . $this->emailEscape($_POST['register_mail']) . "'>" . $this->emailEscape($_POST['register_mail']) . "</a><br>\n";
                 $register_message .= $this->emailEscape($_POST['register_text']) . "<br>\n";
                 foreach (RegistrationFields::labels() as $field => $label) {
