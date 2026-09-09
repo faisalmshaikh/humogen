@@ -130,10 +130,10 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const fatherId = mainParents.find(id => nodeSex(id) === 'M');
             const motherId = mainParents.find(id => nodeSex(id) === 'F');
             const spouseId = spouseEdge ? Number(spouseEdge.to) : null;
-            const childrenWithDescendants = (personId, relation) => childrenOf(personId)
+            const childrenWithDescendants = (personId, relation, descendantRelation) => childrenOf(personId)
                 .map(childId => buildPersonNode(
                     childId,
-                    childrenOf(childId).map(grandchildId => buildPersonNode(grandchildId, [], `${relation} grandchild`)),
+                    childrenOf(childId).map(grandchildId => buildPersonNode(grandchildId, [], descendantRelation)),
                     relation
                 ));
             const siblingIds = [...new Set(siblingEdges
@@ -181,10 +181,10 @@ $graphJson = json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 buildSpouseBranch(spouseId),
                 buildGroupNode('siblings-group', 'Siblings', siblingIds.map(id => buildPersonNode(
                     id,
-                    childrenWithDescendants(id, 'Niece/nephew'),
+                    childrenWithDescendants(id, nodeSex(id) === 'M' ? 'Brother' : 'Sister', 'Niece/nephew'),
                     nodeSex(id) === 'M' ? 'Brother' : 'Sister'
                 ))),
-                buildGroupNode('children-group', 'Children', childrenWithDescendants(mainId, 'Grandchild'))
+                buildGroupNode('children-group', 'Children', childrenWithDescendants(mainId, 'Child', 'Grandchild'))
             ], 'Main person')].filter(Boolean);
 
             const tableNodeIds = [];
