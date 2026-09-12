@@ -104,6 +104,10 @@ $sections = [
         'faqs' => [
             ['Why should I register?', 'Registration identifies you as a relative or contributor and can unlock features that are not available to logged-out visitors.'],
             ['How do I register?', 'Choose Register from the login menu, complete the form, answer the block-spam question when you have the secret code, and submit the form.'],
+            ['What is a secret code on the registration form?', 'The secret code helps ensure that the registration form is being completed by a family member. Because it is shared only within family groups of relatives, it helps prevent external members from registering on our family tree and gaining access. Secret codes are changed periodically for security reasons.'],
+            ['Can I submit the form without a secret code?', 'Yes. Without a secret code, your user will not be created immediately and you will not have immediate access. Instead, an email will be sent to the current Shijrah Administrator, who will review your registration details and approve access.'],
+            ['Where can I find the secret code?', 'You can obtain the secret code from the Shijrah Administrator. The administrator’s contact details are provided at the bottom of the screen.'],
+            ['I provided the secret code, but my access still appears limited. Why?', 'A registration made with a secret code grants access immediately, but it is still subject to manual review by the administrator. Until the administrator approves the login, you may have limited access to Shijrah. Once approved, you will gain full access.'],
             ['What information is required?', 'The form identifies the information required. Provide accurate contact details so the administrators can reach you about the registration.'],
             ['Do I need to use my real name?', 'Use information that allows the administrators to identify and contact you appropriately.'],
             ['Why have I not received a registration email?', 'Check your spam folder and confirm that the email address was entered correctly. Contact the administrators if the message still does not arrive.'],
