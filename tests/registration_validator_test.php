@@ -20,5 +20,7 @@ expectSame('', RegistrationValidator::birthDateError('1980-02-29'), 'A valid dat
 expectSame('ERROR: Date of birth must be a valid date.', RegistrationValidator::birthDateError('1980-02-30'), 'An invalid date should be rejected.');
 expectSame('', RegistrationValidator::maritalStatusError('Married'), 'A valid marital status should pass.');
 expectSame('ERROR: Please select a valid marital status.', RegistrationValidator::maritalStatusError('Unknown'), 'An invalid marital status should be rejected.');
+expectSame('', RegistrationValidator::emailError('new@example.com', false), 'A new email address should pass.');
+expectSame('ERROR: E-mail address already exists.', RegistrationValidator::emailError('existing@example.com', true), 'An existing email address should be rejected.');
 
 echo "Registration validator tests passed.\n";

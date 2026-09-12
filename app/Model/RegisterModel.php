@@ -216,6 +216,21 @@ class RegisterModel extends BaseModel
                 $register["error"] = __('ERROR: username already exists');
             }
 
+            if (!$register["error"] && trim((string) ($_POST["register_mail"] ?? '')) !== '') {
+                $emailSql = 'SELECT user_id FROM humo_users
+                    WHERE LOWER(TRIM(user_mail)) = LOWER(TRIM(:user_mail))';
+                $emailStmt = $this->dbh->prepare($emailSql);
+                $emailStmt->execute([':user_mail' => trim((string) $_POST["register_mail"])]);
+                $emailExists = $emailStmt->fetch(PDO::FETCH_OBJ) !== false;
+                $validationError = RegistrationValidator::emailError(
+                    (string) $_POST["register_mail"],
+                    $emailExists
+                );
+                if ($validationError !== '') {
+                    $register["error"] = __($validationError);
+                }
+            }
+
             if (!$register["error"]) {
                 $validationError = RegistrationValidator::usernameError((string) $_POST["register_name"]);
                 if ($validationError !== '') {

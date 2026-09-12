@@ -19,7 +19,7 @@ if (!empty($register['contact_followup'])) {
     } else {
         $register["show_form"] = true;
     ?>
-        <div class="alert alert-info" role="alert">
+        <div id="register_error" class="alert alert-info" role="alert">
             <?= $register["error"]; ?>
         </div>
     <?php
@@ -127,7 +127,7 @@ if ($register["show_form"]) {
                 <div class="mb-2 row">
                     <label for="mail_sender" class="col-sm-3 col-form-label"><?= __('E-mail address'); ?></label>
                     <div class="col-sm-5">
-                        <input type="email" id="register_mail" class="form-control" name="register_mail" value="<?= htmlspecialchars($register["mail"], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
+                        <input type="email" id="register_mail" class="form-control" name="register_mail" value="<?= htmlspecialchars($register["mail"], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" aria-describedby="register_error" <?= !empty($register['error']) ? 'aria-invalid="true"' : ''; ?>>
                     </div>
                 </div>
 

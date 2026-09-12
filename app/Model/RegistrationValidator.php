@@ -42,4 +42,13 @@ final class RegistrationValidator
 
         return '';
     }
+
+    public static function emailError(string $email, bool $alreadyExists): string
+    {
+        if ($email !== '' && $alreadyExists) {
+            return 'ERROR: E-mail address already exists.';
+        }
+
+        return '';
+    }
 }
