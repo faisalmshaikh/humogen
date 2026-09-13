@@ -117,10 +117,10 @@ class RegisterModel extends BaseModel
             $password = bin2hex(random_bytes(32));
         }
         $sql = 'INSERT INTO humo_users
-            (user_name, user_remark, user_register_date, user_mail, user_password_salted, user_group_id,
+            (user_name, user_remark, user_register_date, user_mail, user_full_name, user_password_salted, user_group_id,
              user_father_name, user_mother_name, user_birth_date, user_reference_name, user_address,
              user_marital_status, user_paternal_grandparent_names, user_maternal_grandparent_names, user_phone, user_status)
-            VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_password_salted, :user_group_id,
+            VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_full_name, :user_password_salted, :user_group_id,
                     :user_father_name, :user_mother_name, :user_birth_date, :user_reference_name, :user_address,
                     :user_marital_status, :user_paternal_grandparent_names, :user_maternal_grandparent_names, :user_phone, :user_status)';
         $stmt = $this->dbh->prepare($sql);
@@ -129,6 +129,7 @@ class RegisterModel extends BaseModel
             ':user_remark' => $_POST['register_text'] ?? '',
             ':user_register_date' => date('Y-m-d H:i'),
             ':user_mail' => $_POST['register_mail'] ?? '',
+            ':user_full_name' => $register['full_name'] ?? '',
             ':user_password_salted' => password_hash($password, PASSWORD_DEFAULT),
             ':user_group_id' => $this->humo_option['visitor_registration_group'],
             ':user_status' => 'I',
@@ -277,10 +278,10 @@ class RegisterModel extends BaseModel
                 $user_register_date = date("Y-m-d H:i");
                 $hashToStoreInDb = password_hash($password, PASSWORD_DEFAULT);
                 $sql = "INSERT INTO humo_users 
-                    (user_name, user_remark, user_register_date, user_mail, user_password_salted, user_group_id,
+                    (user_name, user_remark, user_register_date, user_mail, user_full_name, user_password_salted, user_group_id,
                      user_father_name, user_mother_name, user_birth_date, user_reference_name, user_address,
                      user_marital_status, user_paternal_grandparent_names, user_maternal_grandparent_names, user_phone, user_status)
-                    VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_password_salted, :user_group_id,
+                    VALUES (:user_name, :user_remark, :user_register_date, :user_mail, :user_full_name, :user_password_salted, :user_group_id,
                             :user_father_name, :user_mother_name, :user_birth_date, :user_reference_name, :user_address,
                             :user_marital_status, :user_paternal_grandparent_names, :user_maternal_grandparent_names, :user_phone, :user_status)";
                 $stmt = $this->dbh->prepare($sql);
@@ -289,6 +290,7 @@ class RegisterModel extends BaseModel
                     ':user_remark' => $_POST["register_text"],
                     ':user_register_date' => $user_register_date,
                     ':user_mail' => $_POST["register_mail"],
+                    ':user_full_name' => $register['full_name'],
                     ':user_password_salted' => $hashToStoreInDb,
                     ':user_group_id' => $this->humo_option["visitor_registration_group"],
                     ':user_status' => 'A'

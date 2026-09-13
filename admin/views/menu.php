@@ -110,12 +110,13 @@ if ($popup == false) {
                     <!-- Users -->
                     <?php if ($group_administrator == 'j') {; ?>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle <?= $page == 'users' || $page == 'groups' || $page == 'log' ? 'active' : ''; ?>" href="index.php?page=users" data-bs-toggle="dropdown"><?= __('Users'); ?></a>
+                            <a class="nav-link dropdown-toggle <?= $page == 'users' || $page == 'groups' || $page == 'log' || $page == 'pending_approval' ? 'active' : ''; ?>" href="index.php?page=users" data-bs-toggle="dropdown"><?= __('Users'); ?></a>
 
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item <?= $page == 'users' ? 'active' : ''; ?>" href="index.php?page=users"><?= __('Users'); ?></a></li>
                                 <li><a class="dropdown-item <?= $page == 'groups' ? 'active' : ''; ?>" href="index.php?page=groups"><?= __('User groups'); ?></a></li>
                                 <li><a class="dropdown-item <?= $page == 'log' ? 'active' : ''; ?>" href="index.php?page=log"><?= __('Log'); ?></a></li>
+                                <li><a class="dropdown-item <?= $page == 'pending_approval' ? 'active' : ''; ?>" href="index.php?page=pending_approval"><?= __('Pending Approval'); ?></a></li>
                             </ul>
                         </li>
                     <?php } ?>

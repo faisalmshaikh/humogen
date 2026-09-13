@@ -382,6 +382,7 @@ if (isset($_POST['install_tables2'])) {
             user_id smallint(5) unsigned NOT NULL auto_increment,
             user_name varchar(25) CHARACTER SET utf8,
             user_mail varchar(100) CHARACTER SET utf8,
+            user_full_name varchar(100) CHARACTER SET utf8 DEFAULT '',
             user_father_name varchar(100) CHARACTER SET utf8 DEFAULT '',
             user_mother_name varchar(100) CHARACTER SET utf8 DEFAULT '',
             user_birth_date date DEFAULT NULL,

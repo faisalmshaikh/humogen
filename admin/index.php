@@ -747,6 +747,10 @@ if ($popup == false) {
             $controllerObj = new Genealogy\Admin\Controller\UsersController($admin_config);
             $edit_users = $controllerObj->detail();
             include_once(__DIR__ . "/views/users.php");
+        } elseif ($group_administrator == 'j' && $page === 'pending_approval') {
+            $controllerObj = new Genealogy\Admin\Controller\PendingApprovalController($admin_config);
+            $pending_approval = $controllerObj->detail();
+            include_once(__DIR__ . "/views/pending_approval.php");
         } elseif ($page === 'editor_user_settings') {
             include_once(__DIR__ . "/views/editor_user_settings.php");
         } elseif ($page === 'groups') {

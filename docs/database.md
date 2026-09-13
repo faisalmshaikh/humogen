@@ -778,6 +778,7 @@ CREATE TABLE `humo_users` (
 `user_name` varchar(25) DEFAULT NULL,
 `user_gedcomnbr` varchar(7) DEFAULT NULL,
 `user_mail` varchar(100) DEFAULT NULL,
+`user_full_name` varchar(100) DEFAULT '',
 `user_trees` text DEFAULT NULL,
 `user_remark` text DEFAULT NULL,
 `user_password` varchar(50) DEFAULT NULL,
