@@ -166,6 +166,24 @@ function mapbirthplace($place)
                     ORDER BY wholename";
                 $maplist = $dbh->query($sql);
             }
+        } elseif ($_SESSION['type_residence'] == 1) {
+            echo '<b><u>' . __('Persons residing here: ') . '</u></b><br>';
+
+            $sql = "SELECT p.*, CONCAT(p.pers_lastname, p.pers_firstname) AS wholename
+                FROM humo_persons p
+                INNER JOIN humo_connections c
+                    ON c.connect_connect_id = p.pers_gedcomnumber
+                    AND c.connect_tree_id = p.pers_tree_id
+                    AND c.connect_kind = 'person'
+                    AND c.connect_sub_kind = 'person_address'
+                INNER JOIN humo_addresses a
+                    ON a.address_gedcomnr = c.connect_item_id
+                    AND a.address_tree_id = p.pers_tree_id
+                WHERE p.pers_tree_id = '" . $tree_id . "'
+                AND " . $idstring . $namestring . "
+                a.address_place = '" . $place . "'
+                ORDER BY wholename";
+            $maplist = $dbh->query($sql);
         }
         //echo 'TEST: '.$sql;
         ?>
@@ -176,6 +194,8 @@ function mapbirthplace($place)
                 $maplistDb = $db_functions->get_person_with_id($maplist2Db->pers_id);
                 $privacy_man = $personPrivacy->get_privacy($maplistDb);
                 $name = $personName->get_person_name($maplistDb, $privacy_man);
+                $date = '';
+                $sign = '';
                 if ($name["show_name"] == true) {
                     $pers_family = '';
                     if ($maplistDb->parent_relation_gedcomnumber) {
@@ -206,6 +226,9 @@ function mapbirthplace($place)
                         $date = $maplistDb->pers_buried_date;
                         $sign = __('buried') . ' ';
                     }
+                }
+                if ($_SESSION['type_residence'] == 1) {
+                    echo $name["index_name"];
                 }
                 if (!$privacy_man and $date and $name["show_name"] == true) {
                     echo ' (' . $sign . $datePlace->date_place($date, '') . ')';

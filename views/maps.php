@@ -75,6 +75,7 @@ $datePlace = new \Genealogy\Include\DatePlace();
                 <select style="max-width:200px" size="1" onChange="document.type_form.submit()" id="map_type" name="map_type" class="form-select form-select-sm">
                     <option value="type_birth" <?= $maps['display_birth'] ? 'selected' : ''; ?>><?= __('Birth locations'); ?></option>
                     <option value="type_death" <?= $maps['display_death'] ? 'selected' : ''; ?>><?= __('Death locations'); ?></option>
+                    <option value="type_residence" <?= $maps['display_residence'] ? 'selected' : ''; ?>><?= __('Residence location'); ?></option>
                 </select>
             </form>
         </div>
@@ -144,6 +145,8 @@ $datePlace = new \Genealogy\Include\DatePlace();
                         <?= __('Display births until: '); ?>
                     <?php } elseif ($maps['display_death']) { ?>
                         <?= __('Display deaths until: '); ?>
+                    <?php } elseif ($maps['display_residence']) { ?>
+                        <?= __('Display residence locations'); ?>
                     <?php } ?>
 
                     <input type="text" id="amount" disabled="disabled" size="4" style="border:0;color:#0000CC;font-weight:normal;font-size:115%;">
@@ -835,6 +838,8 @@ $datePlace = new \Genealogy\Include\DatePlace();
                         echo 'var list ="' . __('For a list of persons born here until ') . '";';
                     } elseif ($_SESSION['type_death'] == 1) {
                         echo 'var list ="' . __('For a list of all people that died here until ') . '";';
+                    } elseif ($_SESSION['type_residence'] == 1) {
+                        echo 'var list ="' . __('For a list of persons residing here') . '";';
                     }
                     echo 'var click ="' . __(' click here') . '";';
                     echo 'var readabout ="' . __('Read about this location in ') . '";';

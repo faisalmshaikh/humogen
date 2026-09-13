@@ -56,25 +56,47 @@ class MapsModel extends BaseModel
         // *** BE AWARE: session values are used in google_initiate script. If these are disabled, the slider doesn't work ***
         $maps['display_birth'] = true;
         $maps['display_death'] = false;
-        if (!isset($_SESSION['type_death']) && !isset($_SESSION['type_death'])) {
+        $maps['display_residence'] = false;
+        if (!isset($_SESSION['type_birth']) && !isset($_SESSION['type_death']) && !isset($_SESSION['type_residence'])) {
             $_SESSION['type_birth'] = 1;
             $_SESSION['type_death'] = 0;
+            $_SESSION['type_residence'] = 0;
+        }
+        if (!isset($_SESSION['type_residence'])) {
+            $_SESSION['type_residence'] = 0;
         }
         if (isset($_SESSION['type_death']) && $_SESSION['type_death'] == 1) {
             $maps['display_death'] = true;
             $maps['display_birth'] = false;
         }
+        if (isset($_SESSION['type_residence']) && $_SESSION['type_residence'] == 1) {
+            $maps['display_residence'] = true;
+            $maps['display_birth'] = false;
+            $maps['display_death'] = false;
+        }
         if (isset($_POST['map_type']) && $_POST['map_type'] == "type_birth") {
             $_SESSION['type_birth'] = 1;
             $_SESSION['type_death'] = 0;
+            $_SESSION['type_residence'] = 0;
             $maps['display_birth'] = true;
             $maps['display_death'] = false;
+            $maps['display_residence'] = false;
         }
         if (isset($_POST['map_type']) && $_POST['map_type'] == "type_death") {
             $_SESSION['type_death'] = 1;
             $_SESSION['type_birth'] = 0;
+            $_SESSION['type_residence'] = 0;
             $maps['display_death'] = true;
             $maps['display_birth'] = false;
+            $maps['display_residence'] = false;
+        }
+        if (isset($_POST['map_type']) && $_POST['map_type'] == "type_residence") {
+            $_SESSION['type_residence'] = 1;
+            $_SESSION['type_birth'] = 0;
+            $_SESSION['type_death'] = 0;
+            $maps['display_residence'] = true;
+            $maps['display_birth'] = false;
+            $maps['display_death'] = false;
         }
         return $maps;
     }
@@ -268,6 +290,25 @@ class MapsModel extends BaseModel
                     AND humo_persons.pers_tree_id='" . $this->tree_id . "' " . $namesearch_string . "
                 ORDER BY humo_location.location_location"
             );
+        } elseif ($maps['display_residence']) {
+            $person_results = $this->dbh->query(
+                "SELECT humo_location.*, humo_persons.*
+                FROM humo_location
+                INNER JOIN humo_addresses
+                    ON humo_addresses.address_place = humo_location.location_location
+                    AND humo_addresses.address_tree_id = '" . $this->tree_id . "'
+                INNER JOIN humo_connections
+                    ON humo_connections.connect_item_id = humo_addresses.address_gedcomnr
+                    AND humo_connections.connect_tree_id = '" . $this->tree_id . "'
+                    AND humo_connections.connect_kind = 'person'
+                    AND humo_connections.connect_sub_kind = 'person_address'
+                INNER JOIN humo_persons
+                    ON humo_persons.pers_gedcomnumber = humo_connections.connect_connect_id
+                    AND humo_persons.pers_tree_id = '" . $this->tree_id . "'
+                WHERE humo_location.location_lat IS NOT NULL
+                    " . $namesearch_string . "
+                ORDER BY humo_location.location_location"
+            );
         }
 
         while ($personDb = $person_results->fetch(PDO::FETCH_OBJ)) {
@@ -298,6 +339,8 @@ class MapsModel extends BaseModel
                 //if (!$personDb->pers_death_date && $personDb->pers_buried_date) {
                 //    $date = $personDb->pers_buried_date;
                 //}
+            } elseif ($maps['display_residence']) {
+                $place = $personDb->address_place;
             }
 
             $person2Db = $this->db_functions->get_person_with_id($personDb->pers_id);
@@ -443,6 +486,27 @@ class MapsModel extends BaseModel
                     );
 
                     $personDb = $person_results->fetch(PDO::FETCH_OBJ);
+                } elseif ($_SESSION['type_residence'] == 1) {
+                    $person_results = $this->dbh->query(
+                        "SELECT
+                            p.pers_firstname,
+                            a.address_place AS pers_residence_place,
+                            c.connect_date AS pers_residence_date
+                        FROM humo_persons p
+                        INNER JOIN humo_connections c
+                            ON c.connect_connect_id = p.pers_gedcomnumber
+                            AND c.connect_tree_id = p.pers_tree_id
+                            AND c.connect_kind = 'person'
+                            AND c.connect_sub_kind = 'person_address'
+                        INNER JOIN humo_addresses a
+                            ON a.address_gedcomnr = c.connect_item_id
+                            AND a.address_tree_id = p.pers_tree_id
+                        WHERE p.pers_tree_id='" . $this->tree_id . "'
+                            AND p.pers_gedcomnumber ='" . $value . "'
+                            AND a.address_place != ''"
+                    );
+
+                    $personDb = $person_results->fetch(PDO::FETCH_OBJ);
                 }
                 if ($personDb) {
                     if ($_SESSION['type_birth'] == 1) {
@@ -463,6 +527,9 @@ class MapsModel extends BaseModel
                         if (!$personDb->pers_death_date and $personDb->pers_buried_date) {
                             $date = $personDb->pers_buried_date;
                         }
+                    } elseif ($_SESSION['type_residence'] == 1) {
+                        $place = $personDb->pers_residence_place;
+                        $date = $personDb->pers_residence_date ?: date('Y');
                     }
 
                     if (isset($locarray[$place])) {
@@ -572,6 +639,23 @@ class MapsModel extends BaseModel
                     WHERE p.pers_tree_id='" . $this->tree_id . "'
                         AND (l_death.location_location !='' OR (l_death.location_location ='' AND l_burial.location_location !='')) " . $namesearch_string
                 );
+            } elseif ($_SESSION['type_residence'] == 1) {
+                $person_results = $this->dbh->query(
+                    "SELECT
+                        a.address_place AS pers_residence_place,
+                        c.connect_date AS pers_residence_date
+                    FROM humo_persons p
+                    INNER JOIN humo_connections c
+                        ON c.connect_connect_id = p.pers_gedcomnumber
+                        AND c.connect_tree_id = p.pers_tree_id
+                        AND c.connect_kind = 'person'
+                        AND c.connect_sub_kind = 'person_address'
+                    INNER JOIN humo_addresses a
+                        ON a.address_gedcomnr = c.connect_item_id
+                        AND a.address_tree_id = p.pers_tree_id
+                    WHERE p.pers_tree_id='" . $this->tree_id . "'
+                        AND a.address_place != '' " . $namesearch_string
+                );
             }
 
             while ($personDb = $person_results->fetch(PDO::FETCH_OBJ)) {
@@ -593,6 +677,9 @@ class MapsModel extends BaseModel
                     if (!$personDb->pers_death_date and $personDb->pers_buried_date) {
                         $date = $personDb->pers_buried_date;
                     }
+                } elseif ($_SESSION['type_residence'] == 1) {
+                    $place = $personDb->pers_residence_place;
+                    $date = $personDb->pers_residence_date ?: date('Y');
                 }
 
                 if (isset($locarray[$place])) {

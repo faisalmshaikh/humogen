@@ -101,6 +101,14 @@ if (isset($_POST['loc_delete2']) && is_numeric($_POST['location_id'])) {
 
     <?php
     if (isset($_POST['check_new'])) {
+        // Residence places are stored in shared addresses rather than events.
+        $dbh->exec("INSERT INTO humo_location (location_location)
+            SELECT DISTINCT a.address_place
+            FROM humo_addresses a
+            WHERE a.address_place IS NOT NULL
+                AND a.address_place != ''
+                AND a.address_place NOT IN (SELECT location_location FROM humo_location)");
+
         // *** New locations to index ***
         $add_locations = array();
         $location = $dbh->query("SELECT location_location FROM humo_location WHERE location_lat IS NULL AND (location_status != 'failed' OR location_status IS NULL)");
