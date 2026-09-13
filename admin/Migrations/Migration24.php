@@ -14,7 +14,7 @@ class Migration24
     public function up(): void
     {
         $this->dbh->exec("ALTER TABLE humo_users
-            ADD user_full_name VARCHAR(100) CHARACTER SET utf8 DEFAULT '' AFTER user_mail");
+            ADD user_full_name VARCHAR(100) CHARACTER SET utf8 DEFAULT '' AFTER user_name");
     }
 
     public function down(): void
