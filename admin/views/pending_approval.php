@@ -31,13 +31,14 @@ function pendingApprovalEscape($value): string
                         <th><?= __('Full Name'); ?></th>
                         <th><?= __('GEDCOM number'); ?></th>
                         <th><?= __('User group'); ?></th>
+                        <th><?= __('Details'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($pending_approval['users'] as $user) {
                         $modalId = 'pending-user-' . (int) $user->user_id;
                     ?>
-                        <tr class="pending-user-row" data-bs-toggle="modal" data-bs-target="#<?= $modalId; ?>" role="button">
+                        <tr>
                             <td>
                                 <input type="radio" name="approved_user_id" value="<?= (int) $user->user_id; ?>" required aria-label="<?= __('Select'); ?> <?= pendingApprovalEscape($user->user_name); ?>">
                             </td>
@@ -55,6 +56,11 @@ function pendingApprovalEscape($value): string
                                         </option>
                                     <?php } ?>
                                 </select>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#<?= $modalId; ?>" aria-label="<?= __('View details'); ?>">
+                                    <img src="images/search.png" alt="<?= __('Details'); ?>">
+                                </button>
                             </td>
                         </tr>
                     <?php } ?>
@@ -77,10 +83,14 @@ function pendingApprovalEscape($value): string
                                 <dd class="col-sm-8"><?= pendingApprovalEscape($user->user_phone ?? ''); ?></dd>
                                 <dt class="col-sm-4"><?= __('Address'); ?></dt>
                                 <dd class="col-sm-8"><?= nl2br(pendingApprovalEscape($user->user_address ?? '')); ?></dd>
+                                <dt class="col-sm-4"><?= __('Date of birth'); ?></dt>
+                                <dd class="col-sm-8"><?= pendingApprovalEscape($user->user_birth_date ?? ''); ?></dd>
                                 <dt class="col-sm-4"><?= __('Parent\'s Names'); ?></dt>
                                 <dd class="col-sm-8"><?= pendingApprovalEscape(trim(($user->user_father_name ?? '') . ' / ' . ($user->user_mother_name ?? ''), ' /')); ?></dd>
-                                <dt class="col-sm-4"><?= __('Grandparent\'s names'); ?></dt>
-                                <dd class="col-sm-8"><?= pendingApprovalEscape(trim(($user->user_paternal_grandparent_names ?? '') . ' / ' . ($user->user_maternal_grandparent_names ?? ''), ' /')); ?></dd>
+                                <dt class="col-sm-4"><?= __('Paternal grandparents'); ?></dt>
+                                <dd class="col-sm-8"><?= pendingApprovalEscape($user->user_paternal_grandparent_names ?? ''); ?></dd>
+                                <dt class="col-sm-4"><?= __('Maternal grandparents'); ?></dt>
+                                <dd class="col-sm-8"><?= pendingApprovalEscape($user->user_maternal_grandparent_names ?? ''); ?></dd>
                                 <dt class="col-sm-4"><?= __('Relative name for reference'); ?></dt>
                                 <dd class="col-sm-8"><?= pendingApprovalEscape($user->user_reference_name ?? ''); ?></dd>
                                 <dt class="col-sm-4"><?= __('Message'); ?></dt>
@@ -96,13 +106,3 @@ function pendingApprovalEscape($value): string
         </button>
     </form>
 <?php } ?>
-
-<script>
-    document.querySelectorAll('.pending-user-row').forEach(function (row) {
-        row.addEventListener('click', function (event) {
-            if (event.target.closest('input, select, option, button, a')) {
-                event.stopPropagation();
-            }
-        });
-    });
-</script>
