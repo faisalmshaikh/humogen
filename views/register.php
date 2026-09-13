@@ -86,11 +86,11 @@ if ($register["show_form"]) {
                 $registrationTextFields = [
                     'register_father_name' => "Father's name",
                     'register_mother_name' => "Mother's name",
-                    'register_reference_name' => 'Relative name for reference',
-                    'register_address' => 'Address',
                     'register_paternal_grandparent_names' => "Paternal grandparent's names",
                     'register_maternal_grandparent_names' => "Maternal grandparent's names",
+                    'register_reference_name' => 'Relative name for reference',
                     'register_phone' => 'Phone number',
+                    'register_address' => 'Address',
                 ];
                 foreach ($registrationTextFields as $field => $label) {
                 ?>
