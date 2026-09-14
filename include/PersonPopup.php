@@ -150,7 +150,7 @@ class PersonPopup
                 if ($has_phone) {
                     $contact_path = $processLinks->get_link($uri_path, 'address_book_contact', $personDb->pers_tree_id, true);
                     $contact_path .= 'person=' . rawurlencode($personDb->pers_gedcomnumber);
-                    $popover_content .= '<li><a class="dropdown-item" href="' . $contact_path . '" rel="nofollow">' . __('Download contact card') . '</a></li>';
+                    $popover_content .= '<li><a class="dropdown-item" href="' . $contact_path . '" rel="nofollow"><img src="images/reports.gif" border="0" alt="' . __('Contact Card') . '"> ' . __('Download contact card') . '</a></li>';
                 }
             }
 
