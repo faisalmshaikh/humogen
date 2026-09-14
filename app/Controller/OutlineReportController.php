@@ -211,9 +211,13 @@ class OutlineReportController
             }
 
             $tableHtml = $this->sanitizeOutlineTable($tableHtml);
-            $filename = 'outline_report_' . bin2hex(random_bytes(16)) . '.html';
+            $filename = $payload['filename'] ?? '';
+            if (!is_string($filename) || !preg_match('/^outline_report_[a-f0-9]{32}\.html$/', $filename)) {
+                $filename = 'outline_report_' . bin2hex(random_bytes(16)) . '.html';
+            }
             $filePath = self::OUTLINE_HTML_DIRECTORY . DIRECTORY_SEPARATOR . $filename;
-            if (file_put_contents($filePath, $tableHtml, LOCK_EX) === false) {
+            $fileContents = $this->buildOutlineExportDocument($tableHtml, $filename);
+            if (file_put_contents($filePath, $fileContents, LOCK_EX) === false) {
                 throw new \RuntimeException('Unable to save the report file.');
             }
 
@@ -250,6 +254,11 @@ class OutlineReportController
                 $next = $child->nextSibling;
                 if ($child instanceof \DOMElement) {
                     if (!in_array(strtolower($child->tagName), $allowedTags, true)) {
+                        if (strtolower($child->tagName) === 'a') {
+                            while ($child->firstChild) {
+                                $node->insertBefore($child->firstChild, $child);
+                            }
+                        }
                         $node->removeChild($child);
                     } else {
                         for ($i = $child->attributes->length - 1; $i >= 0; $i--) {
@@ -272,6 +281,43 @@ class OutlineReportController
         $sanitize($table);
 
         return $document->saveHTML($table);
+    }
+
+    private function buildOutlineExportDocument(string $tableHtml, string $filename): string
+    {
+        $endpoint = $this->getOutlineExportEndpoint();
+        $token = $_SESSION['outline_html_token'] ?? '';
+
+        return '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+            . '<title>Outline Report</title><style>'
+            . 'body{font-family:Arial,sans-serif;margin:1rem}.table{border-collapse:collapse;width:100%}'
+            . '.table th,.table td{border:1px solid #ccc;padding:.35rem;text-align:left}'
+            . '.outline-report-editable{background:#fffbe6;outline:1px dashed #999}'
+            . '#outline-export-status{margin-left:.75rem}'
+            . '</style></head><body>'
+            . '<button type="button" id="outline-export-submit">Submit Changes</button>'
+            . '<span id="outline-export-status" role="status"></span>'
+            . $tableHtml
+            . '<script>'
+            . 'const outlineExportEndpoint=' . json_encode($endpoint, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';'
+            . 'const outlineExportToken=' . json_encode($token, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';'
+            . 'const outlineExportFilename=' . json_encode($filename, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';'
+            . 'const outlineExportTable=document.getElementById("outline-report-table");'
+            . 'const outlineExportStatus=document.getElementById("outline-export-status");'
+            . 'outlineExportTable.querySelectorAll("tbody tr").forEach(row=>row.querySelectorAll("td").forEach((cell,index)=>{'
+            . 'if(index>=2){cell.addEventListener("dblclick",()=>{cell.contentEditable="true";cell.classList.add("outline-report-editable");});}}));'
+            . 'document.getElementById("outline-export-submit").addEventListener("click",()=>{'
+            . 'outlineExportStatus.textContent="Submitting changes...";'
+            . 'fetch(outlineExportEndpoint,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json","X-Outline-HTML-Token":outlineExportToken},credentials:"same-origin",body:JSON.stringify({filename:outlineExportFilename,tableHtml:outlineExportTable.outerHTML})})'
+            . '.then(response=>response.json()).then(result=>{outlineExportStatus.textContent=result.success?"Changes saved.":(result.message||"Unable to save changes.");})'
+            . '.catch(()=>{outlineExportStatus.textContent="Unable to save changes.";});});'
+            . '</script></body></html>';
+    }
+
+    private function getOutlineExportEndpoint(): string
+    {
+        $uriPath = rtrim((string) ($this->config['uri_path'] ?? ''), '/') . '/';
+        return $uriPath . 'index.php?page=outline_report&outline_html=1';
     }
 
     private function getPublicExportUrl(string $filename): string

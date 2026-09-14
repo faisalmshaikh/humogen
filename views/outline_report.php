@@ -145,7 +145,7 @@ echo $data["descendant_header"];
 </div>
 
 <script>
-    const outlineReportEditableColumns = [0, 2, 3, 4, 5];
+    const outlineReportEditableColumns = [2, 3, 4, 5];
 
     document.addEventListener('DOMContentLoaded', () => {
         const table = document.getElementById('outline-report-table');
@@ -220,6 +220,12 @@ echo $data["descendant_header"];
             return;
         }
 
+        const exportTable = table.cloneNode(true);
+        exportTable.querySelectorAll('.dropdown, img').forEach(element => element.remove());
+        exportTable.querySelectorAll('a').forEach(link => {
+            link.replaceWith(document.createTextNode(link.textContent));
+        });
+
         status.textContent = <?= json_encode(__('Generating HTML report...')); ?>;
         const endpoint = new URL(window.location.href);
         endpoint.searchParams.set('outline_html', '1');
@@ -232,7 +238,7 @@ echo $data["descendant_header"];
                 'X-Outline-HTML-Token': <?= json_encode($outline_html_token); ?>
             },
             credentials: 'same-origin',
-            body: JSON.stringify({ tableHtml: table.outerHTML })
+            body: JSON.stringify({ tableHtml: exportTable.outerHTML })
         }).then(response => response.json()).then(result => {
             if (!result.success) {
                 throw new Error(result.message || <?= json_encode(__('Unable to generate the HTML report.')); ?>);
