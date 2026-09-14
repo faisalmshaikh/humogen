@@ -131,11 +131,17 @@ echo $data["descendant_header"];
     <?php
     $outline_sheet_token = bin2hex(random_bytes(32));
     $_SESSION['outline_sheet_token'] = $outline_sheet_token;
+    $outline_html_token = bin2hex(random_bytes(32));
+    $_SESSION['outline_html_token'] = $outline_html_token;
     ?>
     <button type="button" class="btn btn-sm btn-success" onclick="submitOutlineReportToGoogleSheets()">
         <?= __('Submit Changes'); ?>
     </button>
     <span id="outline-report-sheet-status" class="ms-2" role="status"></span>
+    <button type="button" class="btn btn-sm btn-success ms-3" onclick="exportOutlineReportHtml()">
+        <?= __('Copy HTML report link'); ?>
+    </button>
+    <span id="outline-report-html-status" class="ms-2" role="status"></span>
 </div>
 
 <script>
@@ -204,6 +210,61 @@ echo $data["descendant_header"];
         }).catch(() => {
             status.textContent = <?= json_encode(__('Unable to submit the report to Google Sheets.')); ?>;
         });
+    }
+
+    function exportOutlineReportHtml() {
+        const table = document.getElementById('outline-report-table');
+        const status = document.getElementById('outline-report-html-status');
+        if (!table) {
+            status.textContent = <?= json_encode(__('The report table is not available.')); ?>;
+            return;
+        }
+
+        status.textContent = <?= json_encode(__('Generating HTML report...')); ?>;
+        const endpoint = new URL(window.location.href);
+        endpoint.searchParams.set('outline_html', '1');
+
+        fetch(endpoint.toString(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Outline-HTML-Token': <?= json_encode($outline_html_token); ?>
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ tableHtml: table.outerHTML })
+        }).then(response => response.json()).then(result => {
+            if (!result.success) {
+                throw new Error(result.message || <?= json_encode(__('Unable to generate the HTML report.')); ?>);
+            }
+            return copyOutlineReportUrl(result.url).then(() => result.url);
+        }).then(url => {
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = url;
+            status.replaceChildren(document.createTextNode(<?= json_encode(__('HTML report link copied:')); ?> + ' '), link);
+        }).catch(error => {
+            status.textContent = error.message || <?= json_encode(__('Unable to generate the HTML report.')); ?>;
+        });
+    }
+
+    function copyOutlineReportUrl(url) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(url);
+        }
+
+        const input = document.createElement('textarea');
+        input.value = url;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand('copy');
+        input.remove();
+        return copied ? Promise.resolve() : Promise.reject(new Error(<?= json_encode(__('Unable to copy the report link to the clipboard.')); ?>));
     }
 </script>
 <br>

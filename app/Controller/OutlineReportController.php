@@ -13,6 +13,7 @@ class OutlineReportController
     //private const GOOGLE_SHEET_ID = '1cWXGL0mCFcBtKpoY6S_TADk2mhtxF438WIXEIVMZTq0';
 
     private const GOOGLE_SERVICE_ACCOUNT_FILE = __DIR__ . '/../../../../service-account.json';
+    private const OUTLINE_HTML_DIRECTORY = '/home/khandesh21at/public_html';
 
     private $config;
 
@@ -187,5 +188,102 @@ class OutlineReportController
                 'message' => $message
             ]);
         }
+    }
+
+    public function exportHtmlTable(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $requestToken = $_SERVER['HTTP_X_OUTLINE_HTML_TOKEN'] ?? '';
+            $sessionToken = $_SESSION['outline_html_token'] ?? '';
+            if (!$requestToken || !$sessionToken || !hash_equals($sessionToken, $requestToken)) {
+                throw new \RuntimeException('Invalid report export request.');
+            }
+
+            $payload = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($payload)) {
+                throw new \RuntimeException('Invalid report data.');
+            }
+            $tableHtml = $payload['tableHtml'] ?? '';
+            if (!is_string($tableHtml) || $tableHtml === '' || strlen($tableHtml) > 2000000) {
+                throw new \RuntimeException('Invalid report table.');
+            }
+
+            $tableHtml = $this->sanitizeOutlineTable($tableHtml);
+            $filename = 'outline_report_' . bin2hex(random_bytes(16)) . '.html';
+            $filePath = self::OUTLINE_HTML_DIRECTORY . DIRECTORY_SEPARATOR . $filename;
+            if (file_put_contents($filePath, $tableHtml, LOCK_EX) === false) {
+                throw new \RuntimeException('Unable to save the report file.');
+            }
+
+            echo json_encode([
+                'success' => true,
+                'url' => $this->getPublicExportUrl($filename)
+            ]);
+        } catch (\Throwable $exception) {
+            error_log('Outline report HTML export failed: ' . $exception->getMessage());
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => $exception instanceof \RuntimeException
+                    ? $exception->getMessage()
+                    : 'Unable to generate the HTML report.'
+            ]);
+        }
+    }
+
+    private function sanitizeOutlineTable(string $tableHtml): string
+    {
+        $document = new \DOMDocument('1.0', 'UTF-8');
+        $document->loadHTML('<?xml encoding="UTF-8"><div id="outline-export-root">' . $tableHtml . '</div>', LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+        $root = $document->getElementById('outline-export-root');
+        $table = $root ? $root->getElementsByTagName('table')->item(0) : null;
+        if (!$table instanceof \DOMElement || strtolower($table->tagName) !== 'table') {
+            throw new \RuntimeException('The report table is not available.');
+        }
+
+        $allowedTags = ['table', 'thead', 'tbody', 'tr', 'th', 'td', 'span'];
+        $allowedAttributes = ['id', 'class', 'colspan', 'rowspan', 'style'];
+        $sanitize = function (\DOMNode $node) use (&$sanitize, $allowedTags, $allowedAttributes): void {
+            for ($child = $node->firstChild; $child; ) {
+                $next = $child->nextSibling;
+                if ($child instanceof \DOMElement) {
+                    if (!in_array(strtolower($child->tagName), $allowedTags, true)) {
+                        $node->removeChild($child);
+                    } else {
+                        for ($i = $child->attributes->length - 1; $i >= 0; $i--) {
+                            $attribute = $child->attributes->item($i);
+                            if (!in_array(strtolower($attribute->name), $allowedAttributes, true)) {
+                                $child->removeAttributeNode($attribute);
+                            }
+                        }
+                        if ($child->hasAttribute('style')) {
+                            $style = $child->getAttribute('style');
+                            preg_match_all('/(?:padding-inline-start\s*:\s*\d+px|background-color\s*:\s*#[0-9a-f]{3,8})/i', $style, $matches);
+                            $child->setAttribute('style', implode('; ', $matches[0]));
+                        }
+                        $sanitize($child);
+                    }
+                }
+                $child = $next;
+            }
+        };
+        $sanitize($table);
+
+        return $document->saveHTML($table);
+    }
+
+    private function getPublicExportUrl(string $filename): string
+    {
+        $uriPath = $this->config['uri_path'] ?? '';
+        $parsedPath = parse_url($uriPath, PHP_URL_PATH);
+        $appPath = rtrim(is_string($parsedPath) ? $parsedPath : '', '/');
+        $publicPath = rtrim(str_replace('\\', '/', dirname($appPath)), '/');
+        $forwardedProto = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        $scheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
+
+        return $scheme . '://' . $host . ($publicPath ? $publicPath : '') . '/' . rawurlencode($filename);
     }
 }

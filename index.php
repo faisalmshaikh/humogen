@@ -319,6 +319,10 @@ if ($index['page'] == 'address') {
         $controllerObj->submitToGoogleSheet();
         exit;
     }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['outline_html'])) {
+        $controllerObj->exportHtmlTable();
+        exit;
+    }
     $data = $controllerObj->getOutlineReport();
 } elseif ($index['page'] == 'user_settings') {
     // TODO refactor
