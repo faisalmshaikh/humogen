@@ -5,6 +5,10 @@ require_once __DIR__ . '/../app/Model/AddressBookModel.php';
 
 use Genealogy\App\Model\AddressBookModel;
 
+$_SERVER['HTTPS'] = 'on';
+$_SERVER['HTTP_HOST'] = 'khandesh.co.in';
+$_SERVER['SCRIPT_NAME'] = '/familytree/index.php';
+
 function expectContains(string $needle, string $haystack, string $message): void
 {
     if (strpos($haystack, $needle) === false) {
@@ -21,7 +25,7 @@ $contact = [
 
 $vcard = AddressBookModel::formatVcard($contact);
 expectContains("BEGIN:VCARD\r\nVERSION:3.0\r\n", $vcard, 'vCard header should be present.');
-expectContains("N:O'Neil\\, Jr;Ana\\; Maria;;GEDCOM I3695;\r\n", $vcard, 'Name and GEDCOM prefix should be included.');
+expectContains("N:O'Neil\\, Jr;Ana\\; Maria;;I3695;\r\n", $vcard, 'Name and GEDCOM prefix should be included.');
 expectContains("TEL;TYPE=voice:+44 123\\,456\r\n", $vcard, 'Telephone should be included.');
 expectContains("ADR;TYPE=home:;;1 Main\\nStreet;;;;\r\n", $vcard, 'Address should be included.');
 expectContains("BDAY:19800203\r\n", $vcard, 'Birth date should be formatted.');

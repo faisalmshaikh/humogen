@@ -6,8 +6,6 @@ use PDO;
 
 class AddressBookModel extends BaseModel
 {
-    private const FAMILY_URL = 'https://khandesh.co.in/familytree/index.php?page=family';
-
     public function getVcardFile(): string
     {
         $sql = "SELECT p.pers_firstname, p.pers_prefix, p.pers_lastname,
@@ -76,14 +74,14 @@ class AddressBookModel extends BaseModel
         $lastname = (string) ($contact['lastname'] ?? '');
         $gedcom = (string) ($contact['gedcom'] ?? '');
         $fullname = trim(implode(' ', array_filter([$firstname, $contact['prefix'] ?? '', $lastname])));
-        $familyUrl = self::FAMILY_URL . '&' . http_build_query([
+        $familyUrl = self::getFamilyUrl() . '&' . http_build_query([
             'tree_id' => (int) ($contact['tree_id'] ?? 0),
             'id' => (string) ($contact['indexnr'] ?? ''),
             'main_person' => $gedcom,
         ], '', '&', PHP_QUERY_RFC3986);
         $lines = [
             'BEGIN:VCARD', 'VERSION:3.0', 'FN:' . self::escape($fullname),
-            'N:' . self::escape($lastname) . ';' . self::escape($firstname) . ';;' . self::escape('GEDCOM ' . $gedcom) . ';',
+            'N:' . self::escape($lastname) . ';' . self::escape($firstname) . ';;' . self::escape($gedcom) . ';',
             'TEL;TYPE=voice:' . self::escape((string) ($contact['phone'] ?? '')),
             'ADR;TYPE=home:;;' . self::escape((string) ($contact['address'] ?? '')) . ';;;;',
             'URL:' . $familyUrl, 'X-GEDCOM-NUMBER:' . self::escape($gedcom),
@@ -99,6 +97,19 @@ class AddressBookModel extends BaseModel
     private static function escape(string $value): string
     {
         return str_replace(["\\", ";", ",", "\r\n", "\r", "\n"], ["\\\\", "\\;", "\\,", "\\n", "\\n", "\\n"], $value);
+    }
+
+    private static function getFamilyUrl(): string
+    {
+        $forwardedProto = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        $scheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https')
+            ? 'https'
+            : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+        $applicationPath = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+
+        return $scheme . '://' . $host . $applicationPath . '/index.php?page=family';
     }
 
     private static function formatBirthDate(array $contact): string
