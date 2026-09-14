@@ -13,6 +13,13 @@ class IndexController
     public function detail($dbh, $humo_option, $user): array
     {
         $indexModel = new IndexModel();
+
+        if ($this->shouldRequireLoginForFamilyPage($user)) {
+            $_SESSION['login_redirect'] = $this->getCurrentRequestUri();
+            header('Location: ' . $this->getLoginUrl());
+            exit;
+        }
+
         $getVisitorIP = new GetVisitorIP();
         $setTimezone = new SetTimezone();
 
@@ -64,5 +71,35 @@ class IndexController
         $index['page301'] = $indexModel->get_page301();
 
         return $index;
+    }
+
+    private function shouldRequireLoginForFamilyPage(array $user): bool
+    {
+        $requestedPage = $_GET['page'] ?? '';
+        $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '';
+        $pathSegments = array_values(array_filter(explode('/', trim($requestPath, '/')), 'strlen'));
+        $isFamilyPage = in_array($requestedPage, ['family', 'descendant_report'], true)
+            || in_array('family', $pathSegments, true)
+            || in_array('descendant_report', $pathSegments, true);
+
+        return $isFamilyPage
+            && empty($_SESSION['user_id'])
+            && ($user['group_menu_login'] ?? 'j') === 'j'
+            && $_SERVER['REQUEST_METHOD'] !== 'POST';
+    }
+
+    private function getCurrentRequestUri(): string
+    {
+        $requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+        if ($requestUri === '' || $requestUri[0] !== '/' || substr($requestUri, 0, 2) === '//') {
+            return '/';
+        }
+        return str_replace(["\r", "\n"], '', $requestUri);
+    }
+
+    private function getLoginUrl(): string
+    {
+        $scriptDirectory = rtrim(str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/index.php'))), '/');
+        return ($scriptDirectory ?: '') . '/index.php?page=login';
     }
 }

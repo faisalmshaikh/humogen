@@ -94,10 +94,14 @@ class IndexModel
                     $stmt->bindValue(':log_ip_address', $visitor_ip, PDO::PARAM_STR);
                     $stmt->execute();
 
-                    // *** Send to secured page ***
-                    // TODO check link
-                    //header("Location: index.php?menu_choice=main_index");
-                    header("Location: index.php");
+                    // *** Return to the page that required authentication, if applicable. ***
+                    $loginRedirect = $_SESSION['login_redirect'] ?? '';
+                    unset($_SESSION['login_redirect']);
+                    if (is_string($loginRedirect) && $loginRedirect !== '' && $loginRedirect[0] === '/' && substr($loginRedirect, 0, 2) !== '//') {
+                        header('Location: ' . str_replace(["\r", "\n"], '', $loginRedirect));
+                    } else {
+                        header("Location: index.php");
+                    }
                     exit();
                 }
             } else {
