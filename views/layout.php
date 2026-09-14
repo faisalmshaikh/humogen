@@ -129,7 +129,7 @@ function getActiveTopMenu(string $page = 'home')
             'addresses',
             'address'
         ],
-        'tool_menu' => ['anniversary', 'statistics', 'relations', 'maps', 'mailform', 'latest_changes'],
+        'tool_menu' => ['anniversary', 'statistics', 'relations', 'maps', 'mailform', 'latest_changes', 'address_book_download'],
         'user_menu' => ['login', 'register'],
         'setting_menu' => ['user_settings']
     ];
@@ -501,6 +501,7 @@ if ($page == 'family') {
             $menu_path_contact = $processLinks->get_link($uri_path, 'mailform');
             // *** Latest changes ***
             $menu_path_latest_changes = $processLinks->get_link($uri_path, 'latest_changes', $tree_id);
+            $menu_path_address_book = $processLinks->get_link($uri_path, 'address_book_download');
             $menu_path_tree_index = $processLinks->get_link($uri_path, 'tree_index', $tree_id);
             $menu_path_places_persons = $processLinks->get_link($uri_path, 'list', $tree_id, true);
             $menu_path_places_persons .= 'index_list=places&amp;reset=1';
@@ -622,7 +623,7 @@ if ($page == 'family') {
                     } else {
                         // make sure at least one of the submenus is activated, otherwise don't show TOOLS menu
                         if (
-                            $user["group_birthday_list"] == 'j' || $user["group_showstatistics"] == 'j' || $user["group_relcalc"] == 'j' || $user["group_googlemaps"] == 'j' || $user["group_contact"] == 'j' && $selectedFamilyTree->tree_owner && $selectedFamilyTree->tree_email || $user["group_latestchanges"] == 'j'
+                            $user["group_birthday_list"] == 'j' || $user["group_showstatistics"] == 'j' || $user["group_relcalc"] == 'j' || $user["group_googlemaps"] == 'j' || $user["group_contact"] == 'j' && $selectedFamilyTree->tree_owner && $selectedFamilyTree->tree_email || $user["group_latestchanges"] == 'j' || $user["group_living_place"] == 'j'
                         ) {
                     ?>
 
@@ -657,6 +658,10 @@ if ($page == 'family') {
 
                                     <?php if ($user["group_latestchanges"] == 'j') {; ?>
                                         <li><a class="dropdown-item <?= $page === 'latest_changes' ? 'active' : ''; ?>" href="<?= $menu_path_latest_changes; ?>"><?= __('Latest changes'); ?></a></li>
+                                    <?php } ?>
+
+                                    <?php if ($user["group_living_place"] == 'j') {; ?>
+                                        <li><a class="dropdown-item <?= $page === 'address_book_download' ? 'active' : ''; ?>" href="<?= $menu_path_address_book; ?>"><?= __('Address Book Download'); ?></a></li>
                                     <?php } ?>
                                 </ul>
                             </li>

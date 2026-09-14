@@ -21,6 +21,7 @@ class ProcessLinks
     // *** Seperator can be used if rewrite is disabled ***
     public $link_array = [
         ['page' => 'addresses', 'file_rewrite' => 'addresses', 'file' => 'index.php?page=addresses', 'seperator' => '&amp;'],
+        ['page' => 'address_book_download', 'file_rewrite' => 'address_book_download', 'file' => 'index.php?page=address_book_download', 'seperator' => '&amp;'],
         ['page' => 'ancestor_report_rtf', 'file_rewrite' => 'ancestor_report_rtf', 'file' => 'index.php?page=ancestor_report_rtf', 'seperator' => '&amp;'],
         ['page' => 'ancestor_report', 'file_rewrite' => 'ancestor_report', 'file' => 'index.php?page=ancestor_report', 'seperator' => '&amp;'],
         ['page' => 'anniversary', 'file_rewrite' => 'anniversary', 'file' => 'index.php?page=anniversary', 'seperator' => '&amp;'],

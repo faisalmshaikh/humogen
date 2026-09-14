@@ -193,6 +193,8 @@ include_once(__DIR__ . "/include/config.php");
 if ($index['page'] == 'address') {
     $controllerObj = new Genealogy\App\Controller\AddressController($config);
     $data = $controllerObj->detail();
+} elseif ($index['page'] == 'address_book_download') {
+    (new Genealogy\App\Controller\AddressBookController($config))->download();
 } elseif ($index['page'] == 'addresses') {
     $controllerObj = new Genealogy\App\Controller\AddressesController($config);
     $data = $controllerObj->list();

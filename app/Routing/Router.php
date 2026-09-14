@@ -15,6 +15,7 @@ class Router
         ['path' => 'ancestor_chart', 'title' => 'Ancestor chart', 'page' => 'ancestor_chart', 'vars' => 'select_tree_id,id'],
         ['path' => 'ancestor_sheet_pdf', 'title' => 'Ancestor sheet', 'page' => 'ancestor_sheet_pdf', 'vars' => 'select_tree_id,id'],
         ['path' => 'ancestor_sheet', 'title' => 'Ancestor sheet', 'page' => 'ancestor_sheet', 'vars' => 'select_tree_id,id'],
+        ['path' => 'address_book_download', 'title' => 'Address Book Download', 'page' => 'address_book_download'],
         ['path' => 'anniversary', 'title' => 'Birthday calendar', 'page' => 'anniversary'],
         ['path' => 'chat_genealogy_api', 'title' => 'Chat Genealogy API', 'page' => 'chat_genealogy_api'],
         ['path' => 'chat_genealogy', 'title' => 'Chat Genealogy', 'page' => 'chat_genealogy'],
