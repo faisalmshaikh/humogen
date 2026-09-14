@@ -68,6 +68,58 @@ class AddressBookModel extends BaseModel
         return $output;
     }
 
+    public function getPersonVcard(string $gedcomNumber): string
+    {
+        $sql = "SELECT p.pers_firstname, p.pers_prefix, p.pers_lastname,
+                    p.pers_gedcomnumber, p.pers_indexnr, p.pers_tree_id,
+                    a.address_phone, a.address_address, a.address_place, a.address_zip,
+                    birth.date_year AS birth_year, birth.date_month AS birth_month,
+                    birth.date_day AS birth_day
+                FROM humo_persons p
+                INNER JOIN humo_connections c ON c.connect_tree_id = p.pers_tree_id
+                    AND c.connect_connect_id = p.pers_gedcomnumber
+                    AND c.connect_kind = 'person' AND c.connect_sub_kind = 'person_address'
+                INNER JOIN humo_addresses a ON a.address_tree_id = c.connect_tree_id
+                    AND a.address_gedcomnr = c.connect_item_id
+                LEFT JOIN humo_events birth ON birth.person_id = p.pers_id
+                    AND birth.event_kind = 'birth'
+                WHERE p.pers_tree_id = :tree_id
+                    AND p.pers_gedcomnumber = :gedcom
+                    AND TRIM(COALESCE(a.address_phone, '')) <> ''
+                ORDER BY c.connect_order";
+        $statement = $this->dbh->prepare($sql);
+        $statement->execute([':tree_id' => $this->tree_id, ':gedcom' => $gedcomNumber]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        if (!$rows) {
+            return '';
+        }
+
+        $first = $rows[0];
+        $phones = [];
+        $addresses = [];
+        foreach ($rows as $row) {
+            $phone = trim((string) ($row['address_phone'] ?? ''));
+            if ($phone !== '' && !in_array($phone, $phones, true)) {
+                $phones[] = $phone;
+            }
+            $address = trim(implode(' ', array_filter([
+                $row['address_address'] ?? '', $row['address_place'] ?? '', $row['address_zip'] ?? '',
+            ], static fn ($value): bool => trim((string) $value) !== '')));
+            if ($address !== '' && !in_array($address, $addresses, true)) {
+                $addresses[] = $address;
+            }
+        }
+
+        return self::formatVcard([
+            'firstname' => $first['pers_firstname'] ?? '', 'prefix' => $first['pers_prefix'] ?? '',
+            'lastname' => $first['pers_lastname'] ?? '', 'gedcom' => $first['pers_gedcomnumber'] ?? '',
+            'indexnr' => $first['pers_indexnr'] ?? '', 'tree_id' => $first['pers_tree_id'] ?? $this->tree_id,
+            'phone' => implode('; ', $phones), 'address' => implode('; ', $addresses),
+            'birth_year' => $first['birth_year'] ?? '', 'birth_month' => $first['birth_month'] ?? '',
+            'birth_day' => $first['birth_day'] ?? '',
+        ]);
+    }
+
     public static function formatVcard(array $contact): string
     {
         $firstname = (string) ($contact['firstname'] ?? '');

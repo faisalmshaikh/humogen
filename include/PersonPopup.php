@@ -138,6 +138,22 @@ class PersonPopup
                 $popover_content .= '<li><a class="dropdown-item" href="' . $path_tmp . '" rel="nofollow"><img src="images/hourglass.gif" border="0" alt="' . __('Hourglass chart') . '"> ' . __('Hourglass chart') . '</a></li>';
             }
 
+            // *** Download contact card when a telephone number is available ***
+            if ($user['group_living_place'] == 'j') {
+                $has_phone = false;
+                foreach ($db_functions->get_addresses('person', 'person_address', $personDb->pers_gedcomnumber) as $addressDb) {
+                    if (trim((string) ($addressDb->address_phone ?? '')) !== '') {
+                        $has_phone = true;
+                        break;
+                    }
+                }
+                if ($has_phone) {
+                    $contact_path = $processLinks->get_link($uri_path, 'address_book_contact', $personDb->pers_tree_id, true);
+                    $contact_path .= 'person=' . rawurlencode($personDb->pers_gedcomnumber);
+                    $popover_content .= '<li><a class="dropdown-item" href="' . $contact_path . '" rel="nofollow">' . __('Download contact card') . '</a></li>';
+                }
+            }
+
             // *** Editor link ***
             if ($user['group_edit_trees'] || $user['group_admin'] == 'j') {
                 $edit_tree_array = explode(";", $user['group_edit_trees']);

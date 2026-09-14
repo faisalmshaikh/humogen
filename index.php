@@ -195,6 +195,13 @@ if ($index['page'] == 'address') {
     $data = $controllerObj->detail();
 } elseif ($index['page'] == 'address_book_download') {
     (new Genealogy\App\Controller\AddressBookController($config))->download();
+} elseif ($index['page'] == 'address_book_contact') {
+    $gedcomNumber = $_GET['person'] ?? '';
+    if (!is_string($gedcomNumber) || !preg_match('/^[A-Za-z0-9_-]+$/', $gedcomNumber)) {
+        http_response_code(400);
+        exit(__('Invalid person number.'));
+    }
+    (new Genealogy\App\Controller\AddressBookController($config))->downloadPerson($gedcomNumber);
 } elseif ($index['page'] == 'addresses') {
     $controllerObj = new Genealogy\App\Controller\AddressesController($config);
     $data = $controllerObj->list();
