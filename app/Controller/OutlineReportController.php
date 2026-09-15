@@ -196,25 +196,34 @@ class OutlineReportController
 
         try {
             $requestToken = $_SERVER['HTTP_X_OUTLINE_HTML_TOKEN'] ?? '';
-            $sessionToken = $_SESSION['outline_html_token'] ?? '';
-            if (!$requestToken || !$sessionToken || !hash_equals($sessionToken, $requestToken)) {
-                throw new \RuntimeException('Invalid report export request.');
-            }
-
             $payload = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($payload)) {
                 throw new \RuntimeException('Invalid report data.');
             }
+            $filename = $payload['filename'] ?? '';
+            $isExistingExport = is_string($filename) && preg_match('/^outline_report_[a-f0-9]{32}\.html$/', $filename);
+            $exportTokens = $_SESSION['outline_html_export_tokens'] ?? [];
+            if (!is_array($exportTokens)) {
+                $exportTokens = [];
+            }
+            $_SESSION['outline_html_export_tokens'] = $exportTokens;
+            $sessionToken = $isExistingExport
+                ? ($exportTokens[$filename] ?? ($_SESSION['outline_html_token'] ?? ''))
+                : ($_SESSION['outline_html_token'] ?? '');
+            if (!$requestToken || !$sessionToken || !hash_equals($sessionToken, $requestToken)) {
+                throw new \RuntimeException('Invalid report export request.');
+            }
+
             $tableHtml = $payload['tableHtml'] ?? '';
             if (!is_string($tableHtml) || $tableHtml === '' || strlen($tableHtml) > 2000000) {
                 throw new \RuntimeException('Invalid report table.');
             }
 
             $tableHtml = $this->sanitizeOutlineTable($tableHtml);
-            $filename = $payload['filename'] ?? '';
-            if (!is_string($filename) || !preg_match('/^outline_report_[a-f0-9]{32}\.html$/', $filename)) {
+            if (!$isExistingExport) {
                 $filename = 'outline_report_' . bin2hex(random_bytes(16)) . '.html';
             }
+            $_SESSION['outline_html_export_tokens'][$filename] = $requestToken;
             $filePath = self::OUTLINE_HTML_DIRECTORY . DIRECTORY_SEPARATOR . $filename;
             $fileContents = $this->buildOutlineExportDocument($tableHtml, $filename);
             if (file_put_contents($filePath, $fileContents, LOCK_EX) === false) {
@@ -322,8 +331,9 @@ class OutlineReportController
             . 'document.getElementById("outline-export-submit").addEventListener("click",()=>{'
             . 'outlineExportStatus.textContent="Submitting changes...";'
             . 'fetch(outlineExportEndpoint,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json","X-Outline-HTML-Token":outlineExportToken},credentials:"same-origin",body:JSON.stringify({filename:outlineExportFilename,tableHtml:outlineExportTable.outerHTML})})'
-            . '.then(response=>response.json()).then(result=>{outlineExportStatus.textContent=result.success?"Changes saved.":(result.message||"Unable to save changes.");})'
-            . '.catch(()=>{outlineExportStatus.textContent="Unable to save changes.";});});'
+            . '.then(response=>response.text().then(body=>{let result;try{result=JSON.parse(body);}catch(error){throw new Error("The server returned an invalid response.");}if(!response.ok||!result.success){throw new Error(result.message||"Unable to save changes.");}return result;}))'
+            . '.then(()=>{outlineExportStatus.textContent="Changes saved.";})'
+            . '.catch(error=>{outlineExportStatus.textContent=error.message||"Unable to save changes.";});});'
             . '</script></body></html>';
     }
 
