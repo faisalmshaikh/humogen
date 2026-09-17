@@ -28,6 +28,7 @@ class ProcessLinks
         ['page' => 'anniversary', 'file_rewrite' => 'anniversary', 'file' => 'index.php?page=anniversary', 'seperator' => '&amp;'],
         ['page' => 'cms_pages', 'file_rewrite' => 'cms_pages', 'file' => 'index.php?page=cms_pages', 'seperator' => '&amp;'],
         ['page' => 'close_relatives', 'file_rewrite' => 'close_relatives', 'file' => 'index.php?page=close_relatives', 'seperator' => '&amp;'],
+        ['page' => 'grow_connections', 'file_rewrite' => 'grow_connections', 'file' => 'index.php?page=grow_connections', 'seperator' => '&amp;'],
         ['page' => 'cookies', 'file_rewrite' => 'cookies', 'file' => 'index.php?page=cookies', 'seperator' => '&amp;'],
         ['page' => 'family', 'file_rewrite' => 'family', 'file' => 'index.php?page=family', 'seperator' => '&amp;'],
         ['page' => 'fanchart', 'file_rewrite' => 'fanchart', 'file' => 'index.php?page=fanchart', 'seperator' => '&amp;'],

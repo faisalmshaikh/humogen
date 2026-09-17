@@ -257,6 +257,13 @@ if ($index['page'] == 'address') {
         $id = $_GET["id"];
     }
     $data = $controllerObj->detail($id);
+} elseif ($index['page'] == 'grow_connections') {
+    $source = $_GET['source'] ?? null;
+    if ($source !== null && (!is_string($source) || !preg_match('/^[A-Za-z0-9_-]+$/', $source))) {
+        http_response_code(400);
+        exit(__('Invalid person number.'));
+    }
+    $data = (new Genealogy\App\Controller\GrowConnectionsController($config))->list($source);
 } elseif ($index['page'] == 'descendant_chart') {
     $controllerObj = new Genealogy\App\Controller\DescendantChartController($config);
     $data = $controllerObj->getFamily();

@@ -129,7 +129,7 @@ function getActiveTopMenu(string $page = 'home')
             'addresses',
             'address'
         ],
-        'tool_menu' => ['anniversary', 'statistics', 'relations', 'maps', 'mailform', 'latest_changes', 'address_book_download'],
+        'tool_menu' => ['anniversary', 'statistics', 'relations', 'maps', 'mailform', 'latest_changes', 'address_book_download', 'grow_connections'],
         'user_menu' => ['login', 'register'],
         'setting_menu' => ['user_settings']
     ];
@@ -502,6 +502,7 @@ if ($page == 'family') {
             // *** Latest changes ***
             $menu_path_latest_changes = $processLinks->get_link($uri_path, 'latest_changes', $tree_id);
             $menu_path_address_book = $processLinks->get_link($uri_path, 'address_book_download');
+            $menu_path_grow_connections = $processLinks->get_link($uri_path, 'grow_connections', $tree_id);
             $menu_path_tree_index = $processLinks->get_link($uri_path, 'tree_index', $tree_id);
             $menu_path_places_persons = $processLinks->get_link($uri_path, 'list', $tree_id, true);
             $menu_path_places_persons .= 'index_list=places&amp;reset=1';
@@ -662,6 +663,7 @@ if ($page == 'family') {
 
                                     <?php if ($user["group_living_place"] == 'j') {; ?>
                                         <li><a class="dropdown-item <?= $page === 'address_book_download' ? 'active' : ''; ?>" href="<?= $menu_path_address_book; ?>"><?= __('Address Book Download'); ?></a></li>
+                                        <li><a class="dropdown-item <?= $page === 'grow_connections' ? 'active' : ''; ?>" href="<?= $menu_path_grow_connections; ?>"><?= __('Grow Connections'); ?></a></li>
                                     <?php } ?>
                                 </ul>
                             </li>
