@@ -7,22 +7,43 @@ final class GrowConnectionsSelector
 {
     public function missingRelatives(array $people, array $families, int $personId): array
     {
+        return array_map(static function (array $relative): array {
+            unset($relative['relation']);
+            return $relative;
+        }, $this->missingRelativesWithRelations($people, $families, $personId));
+    }
+
+    public function missingRelativesWithRelations(array $people, array $families, int $personId): array
+    {
         $parents = $this->parents($people, $families, $personId);
         $parentSiblings = [];
         foreach ($parents as $parentId) {
             $parentSiblings = array_merge($parentSiblings, $this->siblings($people, $families, $parentId));
         }
 
-        $candidateIds = array_merge(
-            $parents,
-            $this->partners($families, $personId),
-            $this->children($families, $personId),
-            $this->siblings($people, $families, $personId),
-            $parentSiblings
-        );
+        $relations = [];
+        foreach ($parents as $parentId) $relations[$parentId] = $this->genderedLabel($people, $parentId, 'Father', 'Mother');
+        foreach ($this->partners($families, $personId) as $relativeId) $relations[$relativeId] = 'Spouse';
+        foreach ($this->children($families, $personId) as $relativeId) $relations[$relativeId] = 'Child';
+        foreach ($this->siblings($people, $families, $personId) as $relativeId) $relations[$relativeId] = $this->genderedLabel($people, $relativeId, 'Brother', 'Sister');
+        $candidateIds = array_merge($parents, array_keys($relations), $parentSiblings);
         foreach ($parentSiblings as $uncleOrAuntId) {
-            $candidateIds = array_merge($candidateIds, $this->children($families, $uncleOrAuntId));
-            $candidateIds = array_merge($candidateIds, $this->partners($families, $uncleOrAuntId));
+            $side = 'Paternal';
+            foreach ($parents as $parentId) {
+                if (in_array($uncleOrAuntId, $this->siblings($people, $families, $parentId), true)) {
+                    $side = (($people[$parentId]['sex'] ?? '') === 'F') ? 'Maternal' : 'Paternal';
+                    break;
+                }
+            }
+            $relations[$uncleOrAuntId] = $side . ' ' . $this->genderedLabel($people, $uncleOrAuntId, 'Uncle', 'Aunt');
+            foreach ($this->children($families, $uncleOrAuntId) as $relativeId) {
+                $candidateIds[] = $relativeId;
+                $relations[$relativeId] ??= $side . ' Cousin';
+            }
+            foreach ($this->partners($families, $uncleOrAuntId) as $relativeId) {
+                $candidateIds[] = $relativeId;
+                $relations[$relativeId] ??= $side . ' ' . $this->genderedLabel($people, $relativeId, 'Uncle', 'Aunt');
+            }
         }
 
         $result = [];
@@ -30,9 +51,14 @@ final class GrowConnectionsSelector
             if ($candidateId === $personId || !isset($people[$candidateId]) || trim((string) ($people[$candidateId]['phone'] ?? '')) !== '') {
                 continue;
             }
-            $result[] = $people[$candidateId] + ['id' => $candidateId];
+            $result[] = $people[$candidateId] + ['id' => $candidateId, 'relation' => $relations[$candidateId] ?? 'Close relative'];
         }
         return $result;
+    }
+
+    private function genderedLabel(array $people, int $personId, string $male, string $female): string
+    {
+        return (($people[$personId]['sex'] ?? '') === 'F') ? $female : $male;
     }
 
     private function parents(array $people, array $families, int $personId): array

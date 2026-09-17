@@ -258,12 +258,17 @@ if ($index['page'] == 'address') {
     }
     $data = $controllerObj->detail($id);
 } elseif ($index['page'] == 'grow_connections') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['grow_html'])) {
+        (new Genealogy\App\Controller\GrowConnectionsController($config))->exportHtml();
+        exit;
+    }
     $source = $_GET['source'] ?? null;
     if ($source !== null && (!is_string($source) || !preg_match('/^[A-Za-z0-9_-]+$/', $source))) {
         http_response_code(400);
         exit(__('Invalid person number.'));
     }
-    $data = (new Genealogy\App\Controller\GrowConnectionsController($config))->list($source);
+    $sortOrder = ($_GET['sort_order'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+    $data = (new Genealogy\App\Controller\GrowConnectionsController($config))->list($source, $sortOrder);
 } elseif ($index['page'] == 'descendant_chart') {
     $controllerObj = new Genealogy\App\Controller\DescendantChartController($config);
     $data = $controllerObj->getFamily();

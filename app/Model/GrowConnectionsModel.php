@@ -6,7 +6,7 @@ use PDO;
 
 class GrowConnectionsModel extends BaseModel
 {
-    public function getData(?string $sourceGedcom = null): array
+    public function getData(?string $sourceGedcom = null, string $sortOrder = 'asc'): array
     {
         $people = [];
         $peopleIdByGedcom = [];
@@ -15,6 +15,7 @@ class GrowConnectionsModel extends BaseModel
             $people[(int) $person->pers_id] = [
                 'id' => (int) $person->pers_id, 'gedcom' => $gedcom,
                 'name' => trim(implode(' ', array_filter([$person->pers_firstname, str_replace('_', ' ', $person->pers_prefix), $person->pers_lastname]))),
+                'birth_date' => trim((string) ($person->pers_birth_date ?? '')),
                 'death_date' => trim((string) ($person->pers_death_date ?? '')), 'phone' => '', 'address' => '',
                 'parent_families' => [],
             ];
@@ -73,13 +74,16 @@ class GrowConnectionsModel extends BaseModel
             $person['reach_count'] = count($selector->missingRelatives($people, $families, $person['id']));
             $sources[] = $person;
         }
-        usort($sources, static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
+        usort($sources, static function (array $a, array $b) use ($sortOrder): int {
+            $comparison = $a['reach_count'] <=> $b['reach_count'];
+            return $sortOrder === 'desc' ? -$comparison : ($comparison !== 0 ? $comparison : strcasecmp($a['name'], $b['name']));
+        });
 
         $missing = [];
         $source = null;
         if ($sourceGedcom !== null) {
             foreach ($sources as $person) if ($person['gedcom'] === $sourceGedcom) $source = $person;
-            if ($source) $missing = $selector->missingRelatives($people, $families, $source['id']);
+            if ($source) $missing = $selector->missingRelativesWithRelations($people, $families, $source['id']);
         }
         return ['sources' => $sources, 'source' => $source, 'missing' => $missing];
     }
