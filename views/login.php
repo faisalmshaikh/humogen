@@ -57,11 +57,82 @@ $path_reset_password = $processLinks->get_link($uri_path, 'reset_password');
         </div>
     </form>
 
-    <div class="mt-4">
+    <style>
+        .social-login-options {
+            max-width: 360px;
+        }
+
+        .social-login-button {
+            align-items: center;
+            border: 1px solid transparent;
+            border-radius: .25rem;
+            display: flex;
+            font-weight: 600;
+            justify-content: center;
+            min-height: 44px;
+            padding: .65rem 1rem;
+            text-decoration: none;
+            transition: filter .15s ease, transform .15s ease;
+            width: 100%;
+        }
+
+        .social-login-button:hover,
+        .social-login-button:focus-visible {
+            filter: brightness(.94);
+            transform: translateY(-1px);
+        }
+
+        .social-login-mark {
+            align-items: center;
+            display: inline-flex;
+            font-size: 1.25rem;
+            font-weight: 700;
+            justify-content: center;
+            margin-right: .75rem;
+            width: 1.4rem;
+        }
+
+        .social-login-google {
+            background: #fff;
+            border-color: #dadce0;
+            color: #3c4043;
+        }
+
+        .social-login-google .social-login-mark {
+            color: #4285f4;
+        }
+
+        .social-login-facebook {
+            background: #1877f2;
+            color: #fff;
+        }
+
+        .social-login-facebook .social-login-mark {
+            font-family: Arial, sans-serif;
+        }
+
+        .social-login-apple {
+            background: #000;
+            color: #fff;
+        }
+    </style>
+
+    <div class="social-login-options mt-4">
         <p><?= __('Sign in with a linked social account'); ?></p>
-        <?php foreach (['google' => 'Google', 'facebook' => 'Facebook', 'apple' => 'Apple'] as $provider => $label) { ?>
-            <a class="btn btn-outline-secondary me-2 mb-2" href="index.php?page=social_login&amp;provider=<?= $provider; ?>"><?= $label; ?></a>
-        <?php } ?>
+        <div class="d-grid gap-2">
+            <a class="social-login-button social-login-google" href="index.php?page=social_login&amp;provider=google" aria-label="Sign in with Google">
+                <span class="social-login-mark" aria-hidden="true">G</span>
+                <span><?= __('Sign in with Google'); ?></span>
+            </a>
+            <a class="social-login-button social-login-facebook" href="index.php?page=social_login&amp;provider=facebook" aria-label="Log in with Facebook">
+                <span class="social-login-mark" aria-hidden="true">f</span>
+                <span><?= __('Log in with Facebook'); ?></span>
+            </a>
+            <a class="social-login-button social-login-apple" href="index.php?page=social_login&amp;provider=apple" aria-label="Sign in with Apple">
+                <span class="social-login-mark" aria-hidden="true">A</span>
+                <span><?= __('Sign in with Apple'); ?></span>
+            </a>
+        </div>
     </div>
 
     <!-- Only use password retrieval option if sender mail is set in admin settings and is a valid mail address -->
