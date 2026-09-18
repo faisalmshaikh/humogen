@@ -27,7 +27,18 @@ class SocialAuthService
         if ($provider === '' && isset($_SESSION['social_auth_state']['provider'])) {
             $provider = strtolower(trim((string) $_SESSION['social_auth_state']['provider']));
         }
+        if ($provider === '') {
+            $callbackState = (string) ($_GET['state'] ?? $_POST['state'] ?? '');
+            $statePrefix = strstr($callbackState, '.', true);
+            if (is_string($statePrefix) && in_array($statePrefix, self::PROVIDERS, true)) {
+                $provider = $statePrefix;
+            }
+        }
         if (!in_array($provider, self::PROVIDERS, true)) {
+            if (isset($_GET['code']) || isset($_POST['code']) || isset($_GET['state']) || isset($_POST['state'])) {
+                $_SESSION['social_auth_error'] = 'The social login session expired. Please try again.';
+                $this->redirect('login');
+            }
             return;
         }
 
@@ -84,7 +95,7 @@ class SocialAuthService
         }
 
         $_SESSION['social_auth_state'] = [
-            'value' => bin2hex(random_bytes(32)),
+            'value' => $provider . '.' . bin2hex(random_bytes(32)),
             'provider' => $provider,
             'action' => $action,
             'created' => time(),
