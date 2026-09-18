@@ -324,6 +324,8 @@ if ($index['page'] == 'address') {
 } elseif ($index['page'] == 'photoalbum') {
     $controllerObj = new Genealogy\App\Controller\PhotoalbumController($config);
     $photoalbum = $controllerObj->detail($selected_language);
+} elseif ($index['page'] == 'privacy') {
+    // Static privacy policy view.
 } elseif ($index['page'] == 'register') {
     $controllerObj = new Genealogy\App\Controller\RegisterController($config);
     $register = $controllerObj->get_register_data();

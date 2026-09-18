@@ -53,6 +53,7 @@ class Router
         ['path' => 'outline_report_pdf', 'title' => 'Outline Report', 'page' => 'outline_report_pdf'],
         ['path' => 'outline_report', 'title' => 'Outline Report', 'page' => 'outline_report'],
         ['path' => 'photoalbum', 'title' => 'Photobook', 'page' => 'photoalbum', 'vars' => 'select_tree_id'],
+        ['path' => 'privacy', 'title' => 'Privacy Policy', 'page' => 'privacy'],
         ['path' => 'register', 'title' => 'Register', 'page' => 'register'],
         ['path' => 'relations', 'title' => 'Relationship calculator', 'page' => 'relations'],
         ['path' => 'reset_password', 'title' => 'Reset password', 'page' => 'reset_password'],

@@ -482,6 +482,7 @@ if ($page == 'family') {
                 $menu_path_chat = 'index.php?page=chat_genealogy';
             }
             $menu_path_cookies = $processLinks->get_link($uri_path, 'cookies');
+            $menu_path_privacy = $processLinks->get_link($uri_path, 'privacy');
             $menu_path_persons = $processLinks->get_link($uri_path, 'list', $tree_id, true);
             $menu_path_persons .= 'reset=1';
             if ($humo_option["url_rewrite"] == "j") {
@@ -892,6 +893,7 @@ if ($page == 'family') {
                 <?php if (!$botDetector->isBot()) { ?>
                     | <a href="<?= $menu_path_cookies; ?>"><?= ucfirst(str_replace('%s ', '', __('%s cookie information'))); ?></a>
                 <?php } ?>
+                | <a href="<?= $menu_path_privacy; ?>">Privacy Policy</a>
             </div>
         </footer>
     <?php } ?>
