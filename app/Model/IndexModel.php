@@ -25,7 +25,7 @@ class IndexModel
     public function login($dbh, $db_functions, $visitor_ip): array
     {
         $socialAuth = new SocialAuthService($dbh);
-        if (($_GET['page'] ?? '') === 'social_login') {
+        if ($this->isSocialLoginRequest()) {
             $socialAuth->handleRequest();
         }
 
@@ -118,6 +118,17 @@ class IndexModel
             }
         }
         return $index;
+    }
+
+    private function isSocialLoginRequest(): bool
+    {
+        if (($_GET['page'] ?? '') === 'social_login') {
+            return true;
+        }
+
+        $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '';
+        $segments = array_values(array_filter(explode('/', trim($path, '/')), 'strlen'));
+        return in_array('social_login', $segments, true);
     }
 
     private function getActiveUser($dbh, int $userId)

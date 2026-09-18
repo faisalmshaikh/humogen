@@ -5,6 +5,8 @@ namespace Genealogy\App\Service;
 use PDO;
 use RuntimeException;
 
+require_once __DIR__ . '/../../../../.env.php';
+
 /**
  * OAuth authentication and account linking for external identity providers.
  * Provider identities are deliberately kept separate from HuMo user records.

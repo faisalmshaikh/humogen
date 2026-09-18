@@ -313,6 +313,8 @@ if ($index['page'] == 'address') {
     //
 } elseif ($index['page'] == 'social_login') {
     // OAuth is completed before routing in IndexModel::login().
+    http_response_code(400);
+    exit(__('Invalid social login callback.'));
 } elseif ($index['page'] == 'mailform') {
     $controllerObj = new Genealogy\App\Controller\MailformController($config);
     $mail_data = $controllerObj->get_mail_data($selected_language);
