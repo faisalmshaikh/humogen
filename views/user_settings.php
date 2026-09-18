@@ -86,6 +86,22 @@ if (isset($data["user"]->user_name) && $user['group_menu_change_password'] == 'y
 
             <?php } ?>
 
+            <hr>
+            <h2><?= __('Social login accounts'); ?></h2>
+            <?php if (!empty($data['social_error'])) { ?>
+                <div class="alert alert-warning"><?= htmlspecialchars($data['social_error'], ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php } ?>
+            <p><?= __('Link a social login to this authorized HuMo account for future sign-ins.'); ?></p>
+            <input type="hidden" name="action" value="link">
+            <input type="hidden" name="social_auth_csrf" value="<?= htmlspecialchars($data['social_csrf'], ENT_QUOTES, 'UTF-8'); ?>">
+            <?php foreach (['google' => 'Google', 'facebook' => 'Facebook', 'apple' => 'Apple'] as $provider => $label) { ?>
+                <?php if (in_array($provider, $data['linked_providers'], true)) { ?>
+                    <span class="badge text-bg-success me-2 mb-2"><?= $label; ?>: <?= __('Linked'); ?></span>
+                <?php } else { ?>
+                    <button type="submit" class="btn btn-outline-secondary me-2 mb-2" formaction="index.php?page=social_login" name="provider" value="<?= $provider; ?>"><?= __('Link'); ?> <?= $label; ?></button>
+                <?php } ?>
+            <?php } ?>
+
             <br>
             <div class="row">
                 <label for="2fa_code" class="col-sm-3 col-form-label"></label>

@@ -21,6 +21,11 @@ $path_reset_password = $processLinks->get_link($uri_path, 'reset_password');
             <strong><?= __('No valid username or password.'); ?></strong>
         </div>
     <?php } ?>
+    <?php if (!empty($index['social_error'])) { ?>
+        <div class="alert alert-warning">
+            <strong><?= htmlspecialchars($index['social_error'], ENT_QUOTES, 'UTF-8'); ?></strong>
+        </div>
+    <?php } ?>
 
     <form action="<?= $path_login; ?>" method="post">
         <div class="mb-2 row">
@@ -51,6 +56,13 @@ $path_reset_password = $processLinks->get_link($uri_path, 'reset_password');
             </div>
         </div>
     </form>
+
+    <div class="mt-4">
+        <p><?= __('Sign in with a linked social account'); ?></p>
+        <?php foreach (['google' => 'Google', 'facebook' => 'Facebook', 'apple' => 'Apple'] as $provider => $label) { ?>
+            <a class="btn btn-outline-secondary me-2 mb-2" href="index.php?page=social_login&amp;provider=<?= $provider; ?>"><?= $label; ?></a>
+        <?php } ?>
+    </div>
 
     <!-- Only use password retrieval option if sender mail is set in admin settings and is a valid mail address -->
     <?php if ($humo_option["password_retrieval"] && filter_var($humo_option["password_retrieval"], FILTER_VALIDATE_EMAIL)) { ?>

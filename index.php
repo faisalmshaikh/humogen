@@ -311,6 +311,8 @@ if ($index['page'] == 'address') {
     $list_names = $controllerObj->list_names($last_name);
 } elseif ($index['page'] == 'login') {
     //
+} elseif ($index['page'] == 'social_login') {
+    // OAuth is completed before routing in IndexModel::login().
 } elseif ($index['page'] == 'mailform') {
     $controllerObj = new Genealogy\App\Controller\MailformController($config);
     $mail_data = $controllerObj->get_mail_data($selected_language);

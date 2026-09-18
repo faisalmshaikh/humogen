@@ -3,6 +3,7 @@
 namespace Genealogy\App\Controller;
 
 use Genealogy\App\Model\UserSettingsModel;
+use Genealogy\App\Service\SocialAuthService;
 
 class UserSettingsController
 {
@@ -24,10 +25,14 @@ class UserSettingsController
         $twofa = $user_settingsModel->showQRcode();
 
         $get_userDb = $user_settingsModel->getUserDb();
+        $socialAuth = new SocialAuthService($this->config['dbh']);
 
         $data = array(
             "user" => $get_userDb,
-            "result_message" => $result_message
+            "result_message" => $result_message,
+            "social_error" => $socialAuth->consumeError(),
+            "social_csrf" => $socialAuth->csrfToken(),
+            "linked_providers" => $get_userDb ? $socialAuth->linkedProviders((int) $get_userDb->user_id) : [],
         );
 
         if (isset($twofa)) {

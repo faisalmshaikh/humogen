@@ -1,0 +1,23 @@
+# Social login configuration
+
+Social login never creates or email-matches HuMo accounts. An administrator must configure the providers, then each user signs in with the existing HuMo login and links a provider from **User settings**.
+
+Set these environment variables in the PHP/web-server environment:
+
+```text
+HUMO_SOCIAL_REDIRECT_URI=https://example.org/index.php?page=social_login
+
+HUMO_GOOGLE_CLIENT_ID=...
+HUMO_GOOGLE_CLIENT_SECRET=...
+
+HUMO_FACEBOOK_CLIENT_ID=...
+HUMO_FACEBOOK_CLIENT_SECRET=...
+HUMO_FACEBOOK_GRAPH_VERSION=v19.0
+
+HUMO_APPLE_CLIENT_ID=...
+HUMO_APPLE_TEAM_ID=...
+HUMO_APPLE_KEY_ID=...
+HUMO_APPLE_PRIVATE_KEY_FILE=/secure/path/AuthKey_KEYID.p8
+```
+
+Register the exact redirect URI with all three providers. The Apple client ID must be the Service ID used for Sign in with Apple. The application validates OAuth state, provider audience/issuer, provider subject, and Apple's token signature. It stores only the provider subject and returned email needed for account linking.

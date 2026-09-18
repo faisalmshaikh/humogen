@@ -3,6 +3,7 @@
 namespace Genealogy\App\Model;
 
 use Genealogy\App\Routing\Router;
+use Genealogy\App\Service\SocialAuthService;
 use Genealogy\Include\Authenticator;
 use PDO;
 
@@ -23,6 +24,39 @@ class IndexModel
 
     public function login($dbh, $db_functions, $visitor_ip): array
     {
+        $socialAuth = new SocialAuthService($dbh);
+        if (($_GET['page'] ?? '') === 'social_login') {
+            $socialAuth->handleRequest();
+        }
+
+        if (isset($_SESSION['social_authenticated_user_id'])) {
+            $socialUserId = (int) $_SESSION['social_authenticated_user_id'];
+            unset($_SESSION['social_authenticated_user_id']);
+            $resultDb = $this->getActiveUser($dbh, $socialUserId);
+            if ($resultDb) {
+                $this->establishSession($dbh, $resultDb, $visitor_ip);
+            }
+        }
+        $index['social_error'] = ($_GET['page'] ?? '') === 'login' ? $socialAuth->consumeError() : '';
+
+        if (isset($_SESSION['social_pending_user_id'])) {
+            $pendingUser = $this->getActiveUser($dbh, (int) $_SESSION['social_pending_user_id']);
+            if ($pendingUser && isset($_POST['2fa_code']) && is_numeric($_POST['2fa_code'])) {
+                include_once(__DIR__ . "/../../include/2fa_authentication/authenticator.php");
+                $authenticator = new Authenticator();
+                if ($authenticator->verifyCode($pendingUser->user_2fa_auth_secret, $_POST['2fa_code'], 2)) {
+                    unset($_SESSION['social_pending_user_id']);
+                    $this->establishSession($dbh, $pendingUser, $visitor_ip);
+                    $this->redirectAfterLogin();
+                }
+                $index['social_error'] = __('Wrong 2FA code. Please enter a valid 2FA code.');
+            } elseif ($pendingUser) {
+                $index['social_error'] = __('Enter your 2FA code to complete social login.');
+            } else {
+                unset($_SESSION['social_pending_user_id']);
+            }
+        }
+
         // *** Log in ***
         $valid_user = false;
         $index['fault'] = false;
@@ -52,47 +86,8 @@ class IndexModel
                 }
 
                 if ($valid_user) {
-                    $_SESSION['user_name'] = $resultDb->user_name;
-                    $_SESSION['user_id'] = $resultDb->user_id;
-                    $_SESSION['user_group_id'] = $resultDb->user_group_id;
-
-                    // *** August 2023: Also login for admin pages ***
-                    // *** Edit family trees [GROUP SETTING] ***
-                    $groepsql = $dbh->query("SELECT * FROM humo_groups WHERE group_id='" . $resultDb->user_group_id . "'");
-                    $groepDb = $groepsql->fetch(PDO::FETCH_OBJ);
-                    if (isset($groepDb->group_edit_trees)) {
-                        $group_edit_trees = $groepDb->group_edit_trees;
-                    }
-                    // *** Edit family trees [USER SETTING] ***
-                    if (isset($resultDb->user_edit_trees) && $resultDb->user_edit_trees) {
-                        if ($group_edit_trees) {
-                            $group_edit_trees .= ';' . $resultDb->user_edit_trees;
-                        } else {
-                            $group_edit_trees = $resultDb->user_edit_trees;
-                        }
-                    }
-                    if ($groepDb->group_admin != 'j' && $group_edit_trees == '') {
-                        // *** User is not an administrator or editor ***
-                        //echo __('Access to admin pages is not allowed.');
-                        //exit;
-                    } else {
-                        $_SESSION['user_name_admin'] = $resultDb->user_name;
-                        $_SESSION['user_id_admin'] = $resultDb->user_id;
-                        $_SESSION['group_id_admin'] = $resultDb->user_group_id;
-                    }
-
-                    // *** Save succesful login into log! ***
-                    $sql = "INSERT INTO humo_user_log SET
-                        log_date = :log_date,
-                        log_username = :log_username,
-                        log_ip_address = :log_ip_address,
-                        log_user_admin = 'user',
-                        log_status = 'success'";
-                    $stmt = $dbh->prepare($sql);
-                    $stmt->bindValue(':log_date', date("Y-m-d H:i"), PDO::PARAM_STR);
-                    $stmt->bindValue(':log_username', $resultDb->user_name, PDO::PARAM_STR);
-                    $stmt->bindValue(':log_ip_address', $visitor_ip, PDO::PARAM_STR);
-                    $stmt->execute();
+                    unset($_SESSION['social_pending_user_id']);
+                    $this->establishSession($dbh, $resultDb, $visitor_ip);
 
                     // *** Return to the page that required authentication, if applicable. ***
                     $loginRedirect = $_SESSION['login_redirect'] ?? '';
@@ -123,6 +118,53 @@ class IndexModel
             }
         }
         return $index;
+    }
+
+    private function getActiveUser($dbh, int $userId)
+    {
+        $stmt = $dbh->prepare("SELECT * FROM humo_users WHERE user_id = :user_id AND UPPER(COALESCE(user_status, '')) = 'A'");
+        $stmt->execute([':user_id' => $userId]);
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    private function establishSession($dbh, $resultDb, string $visitor_ip): void
+    {
+        session_regenerate_id(true);
+        $_SESSION['user_name'] = $resultDb->user_name;
+        $_SESSION['user_id'] = $resultDb->user_id;
+        $_SESSION['user_group_id'] = $resultDb->user_group_id;
+
+        $groepsql = $dbh->prepare('SELECT * FROM humo_groups WHERE group_id = :group_id');
+        $groepsql->execute([':group_id' => $resultDb->user_group_id]);
+        $groepDb = $groepsql->fetch(PDO::FETCH_OBJ);
+        $group_edit_trees = $groepDb->group_edit_trees ?? '';
+        if (!empty($resultDb->user_edit_trees)) {
+            $group_edit_trees = $group_edit_trees ? $group_edit_trees . ';' . $resultDb->user_edit_trees : $resultDb->user_edit_trees;
+        }
+        if (($groepDb->group_admin ?? 'n') === 'j' || $group_edit_trees !== '') {
+            $_SESSION['user_name_admin'] = $resultDb->user_name;
+            $_SESSION['user_id_admin'] = $resultDb->user_id;
+            $_SESSION['group_id_admin'] = $resultDb->user_group_id;
+        }
+
+        $stmt = $dbh->prepare("INSERT INTO humo_user_log SET log_date = :log_date, log_username = :log_username, log_ip_address = :log_ip_address, log_user_admin = 'user', log_status = 'success'");
+        $stmt->execute([
+            ':log_date' => date('Y-m-d H:i'),
+            ':log_username' => $resultDb->user_name,
+            ':log_ip_address' => $visitor_ip,
+        ]);
+    }
+
+    private function redirectAfterLogin(): void
+    {
+        $loginRedirect = $_SESSION['login_redirect'] ?? '';
+        unset($_SESSION['login_redirect']);
+        if (is_string($loginRedirect) && $loginRedirect !== '' && $loginRedirect[0] === '/' && substr($loginRedirect, 0, 2) !== '//') {
+            header('Location: ' . str_replace(["\r", "\n"], '', $loginRedirect));
+        } else {
+            header('Location: index.php');
+        }
+        exit();
     }
 
     public function get_model_route($humo_option): array

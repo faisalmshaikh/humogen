@@ -61,6 +61,7 @@ class Router
         ['path' => 'sources', 'title' => 'Sources', 'page' => 'sources', 'vars' => 'select_tree_id'],
         ['path' => 'source', 'title' => 'Source', 'page' => 'source', 'vars' => 'select_tree_id,id'],
         ['path' => 'statistics', 'title' => 'Statistics', 'page' => 'statistics'],
+        ['path' => 'social_login', 'title' => 'Social login', 'page' => 'social_login'],
         ['path' => 'timeline', 'title' => 'Timelines', 'page' => 'timeline', 'vars' => 'select_tree_id,id'],
         ['path' => 'user_settings', 'title' => 'Settings', 'page' => 'user_settings'],
 
