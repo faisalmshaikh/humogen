@@ -35,6 +35,9 @@ class IndexModel
             $resultDb = $this->getActiveUser($dbh, $socialUserId);
             if ($resultDb) {
                 $this->establishSession($dbh, $resultDb, $visitor_ip);
+                // index.php loaded the guest permissions before this callback
+                // was processed. Reload the request so permissions match the session.
+                $this->redirectAfterLogin();
             }
         }
         $index['social_error'] = ($_GET['page'] ?? '') === 'login' ? $socialAuth->consumeError() : '';
