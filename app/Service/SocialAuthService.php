@@ -22,6 +22,11 @@ class SocialAuthService
     public function handleRequest(): void
     {
         $provider = strtolower(trim((string) ($_GET['provider'] ?? $_POST['provider'] ?? '')));
+        // OAuth providers return the code and state, but do not echo our provider
+        // query parameter. Recover it from the state created before redirecting.
+        if ($provider === '' && isset($_SESSION['social_auth_state']['provider'])) {
+            $provider = strtolower(trim((string) $_SESSION['social_auth_state']['provider']));
+        }
         if (!in_array($provider, self::PROVIDERS, true)) {
             return;
         }
