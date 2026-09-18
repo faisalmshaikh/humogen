@@ -11,6 +11,7 @@ if ($user['group_menu_login'] != 'j') {
 
 $path_login = $processLinks->get_link($uri_path, 'login');
 $path_reset_password = $processLinks->get_link($uri_path, 'reset_password');
+$social_asset_path = $humo_option['url_rewrite'] == 'j' ? $uri_path . 'assets/social/' : 'assets/social/';
 ?>
 
 <h1 class="my-4"><?= __('Login'); ?></h1>
@@ -85,10 +86,15 @@ $path_reset_password = $processLinks->get_link($uri_path, 'reset_password');
         .social-login-mark {
             align-items: center;
             display: inline-flex;
-            font-size: 1.25rem;
-            font-weight: 700;
+            height: 1.4rem;
             justify-content: center;
             margin-right: .75rem;
+            width: 1.4rem;
+        }
+
+        .social-login-mark img {
+            display: block;
+            height: 1.4rem;
             width: 1.4rem;
         }
 
@@ -121,15 +127,15 @@ $path_reset_password = $processLinks->get_link($uri_path, 'reset_password');
         <p><?= __('Sign in with a linked social account'); ?></p>
         <div class="d-grid gap-2">
             <a class="social-login-button social-login-google" href="index.php?page=social_login&amp;provider=google" aria-label="Sign in with Google">
-                <span class="social-login-mark" aria-hidden="true">G</span>
+                <span class="social-login-mark" aria-hidden="true"><img src="<?= htmlspecialchars($social_asset_path . 'google.svg', ENT_QUOTES, 'UTF-8'); ?>" alt=""></span>
                 <span><?= __('Sign in with Google'); ?></span>
             </a>
             <a class="social-login-button social-login-facebook" href="index.php?page=social_login&amp;provider=facebook" aria-label="Log in with Facebook">
-                <span class="social-login-mark" aria-hidden="true">f</span>
+                <span class="social-login-mark" aria-hidden="true"><img src="<?= htmlspecialchars($social_asset_path . 'facebook.svg', ENT_QUOTES, 'UTF-8'); ?>" alt=""></span>
                 <span><?= __('Log in with Facebook'); ?></span>
             </a>
             <a class="social-login-button social-login-apple" href="index.php?page=social_login&amp;provider=apple" aria-label="Sign in with Apple">
-                <span class="social-login-mark" aria-hidden="true">A</span>
+                <span class="social-login-mark" aria-hidden="true"><img src="<?= htmlspecialchars($social_asset_path . 'apple.svg', ENT_QUOTES, 'UTF-8'); ?>" alt=""></span>
                 <span><?= __('Sign in with Apple'); ?></span>
             </a>
         </div>
