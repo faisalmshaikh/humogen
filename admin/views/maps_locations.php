@@ -240,14 +240,11 @@ if (isset($_POST['loc_delete2']) && is_numeric($_POST['location_id'])) {
 
                 // Key 2 meant for geolocation. Is protected by "IP addresses" restriction.
 
-                // if no second key is present, try to use first key.
-                //$api_key = $maps['google_api2'];
-                //if ($maps['google_api2'] === "") {
-                //    $api_key = $maps['google_api1'];
-                //}
+                // Geocoding is a server-side request, so use the IP-restricted key.
+                // Fall back to key 1 for existing installations not yet configured with key 2.
+                $api_key = $maps['google_api2'] !== '' ? $maps['google_api2'] : $maps['google_api1'];
 
-                //$jsonurl = "https://maps.googleapis.com/maps/api/geocode/json?address=" . $loc . '&key=' . $api_key . '&callback=Function.prototype';
-                $jsonurl = "https://maps.googleapis.com/maps/api/geocode/json?address=" . $loc . '&key=' . $maps['google_api1'] . '&callback=Function.prototype';
+                $jsonurl = "https://maps.googleapis.com/maps/api/geocode/json?address=" . $loc . '&key=' . $api_key . '&callback=Function.prototype';
 
                 //echo $api_key." - ".$api_key2."<br>";
                 //echo $jsonurl."<br>";

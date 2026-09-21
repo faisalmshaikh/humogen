@@ -20,7 +20,7 @@ class AdminMapsController
         // *** July 2024: disabled some variables. Probably not needed anymore. ***
         $maps['use_world_map'] = $mapsModel->get_use_world_map();
         $maps['google_api1'] = $mapsModel->get_google_api1();
-        //$maps['google_api2'] = $mapsModel->get_google_api2();
+        $maps['google_api2'] = $mapsModel->get_google_api2();
         $maps['geokeo_api'] = $mapsModel->get_geokeo_api();
         //$maps['default_zoom'] = $mapsModel->get_default_zoom();
         //$maps['map_type'] = $mapsModel->get_map_type();

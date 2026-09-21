@@ -94,7 +94,7 @@ function get_host()
         <form action="index.php?page=maps" method="post">
             <div class="row mb-2">
                 <div class="col-md-auto">
-                    <?= __('API key'); ?>
+                    <?= __('Display map API key'); ?>
                 </div>
                 <div class="col-md-4">
                     <input type="text" id="api_1" name="api_1" value="<?= $maps['google_api1']; ?>" size="40" class="form-control form-control-sm">
@@ -105,12 +105,10 @@ function get_host()
             </div>
         </form>
 
-        <?php
-        /*
         <form action="index.php?page=maps" method="post">
             <div class="row mb-2">
-                <div class="col-md-4">
-                    <?= __('API key') . " 2 (restriction: <strong>IP addresses</strong>)"; ?>
+                <div class="col-md-auto">
+                    <?= __('Geocoding API key'); ?>
                 </div>
                 <div class="col-md-4">
                     <input type="text" id="api_2" name="api_2" value="<?= $maps['google_api2']; ?>" size="40" class="form-control form-control-sm">
@@ -120,8 +118,6 @@ function get_host()
                 </div>
             </div>
         </form>
-        */
-        ?>
 
     <?php } ?>
 

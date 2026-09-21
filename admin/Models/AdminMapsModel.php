@@ -55,6 +55,29 @@ class AdminMapsModel extends AdminBaseModel
         return $api_1;
     }
 
+    public function get_google_api2(): string
+    {
+        // Google Geocoding API key used by server-side admin requests.
+        $api_2 = '';
+        $api_query = $this->dbh->query("SELECT * FROM humo_settings WHERE setting_variable = 'google_api_key_geocoding'");
+        $apiDb = $api_query->fetch(PDO::FETCH_OBJ);
+        if ($apiDb) {
+            $api_2 = $apiDb->setting_value;
+            if (isset($_POST['api_2'])) {
+                $stmt = $this->dbh->prepare("UPDATE humo_settings SET setting_value = :setting_value WHERE setting_variable = 'google_api_key_geocoding'");
+                $stmt->bindValue(':setting_value', $_POST['api_2'], PDO::PARAM_STR);
+                $stmt->execute();
+                $api_2 = $_POST['api_2'];
+            }
+        } elseif (isset($_POST['api_2'])) {
+            $stmt = $this->dbh->prepare("INSERT INTO humo_settings SET setting_value = :setting_value, setting_variable = 'google_api_key_geocoding'");
+            $stmt->bindValue(':setting_value', $_POST['api_2'], PDO::PARAM_STR);
+            $stmt->execute();
+            $api_2 = $_POST['api_2'];
+        }
+        return $api_2;
+    }
+
     public function get_geokeo_api(): string
     {
         // *** OpenStreepMap key ***
