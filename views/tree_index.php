@@ -13,7 +13,7 @@ $learning_center_path = $processLinks->get_link($uri_path, 'learning_center');
 
 
 // *** Show slideshow ***
-if ($page != 'tree_index') {
+if ($page != 'tree_index' && !empty($user['user_name'])) {
     if (isset($humo_option["slideshow_show"]) and $humo_option["slideshow_show"] == 'y') {
         $mainindex->show_slideshow();
     }
