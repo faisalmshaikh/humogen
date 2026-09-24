@@ -14,6 +14,7 @@ class GrowConnectionsModel extends BaseModel
             $gedcom = (string) $person->pers_gedcomnumber;
             $people[(int) $person->pers_id] = [
                 'id' => (int) $person->pers_id, 'gedcom' => $gedcom,
+                'family_id' => trim((string) ($person->pers_indexnr ?? '')),
                 'name' => trim(implode(' ', array_filter([$person->pers_firstname, str_replace('_', ' ', $person->pers_prefix), $person->pers_lastname]))),
                 'sex' => $person->pers_sexe,
                 'birth_date' => trim((string) ($person->pers_birth_date ?? '')),

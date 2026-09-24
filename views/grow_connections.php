@@ -22,7 +22,7 @@ $baseUrl = 'index.php?page=grow_connections&amp;tree_id=' . (int) $tree_id;
             <thead><tr><th><?= __('Gedcom Number'); ?></th><th><?= __('Person\'s Name'); ?></th><th><?= __('Birth Date'); ?></th><th><?= __('Death Date'); ?></th><th><?= __('Phone'); ?></th><th><?= __('Address'); ?></th><th><?= __('Relation'); ?></th></tr></thead>
                 <tbody>
                 <?php foreach ($data['missing'] as $person) { ?>
-                    <tr><td><?= $escape($person['gedcom']); ?></td><td><a href="index.php?page=family&amp;tree_id=<?= (int) $tree_id; ?>&amp;main_person=<?= rawurlencode($person['gedcom']); ?>"><?= $escape($person['name']); ?></a></td><td><?= $escape($person['birth_date']); ?></td><td><?= $escape($person['death_date']); ?></td><td><?= $escape($person['phone']); ?></td><td><?= $escape($person['address']); ?></td><td><?= $escape($person['relation']); ?></td></tr>
+                    <tr><td><?= $escape($person['gedcom']); ?></td><td><a href="index.php?page=family&amp;tree_id=<?= (int) $tree_id; ?>&amp;id=<?= rawurlencode($person['family_id']); ?>&amp;main_person=<?= rawurlencode($person['gedcom']); ?>"><?= $escape($person['name']); ?></a></td><td><?= $escape($person['birth_date']); ?></td><td><?= $escape($person['death_date']); ?></td><td><?= $escape($person['phone']); ?></td><td><?= $escape($person['address']); ?></td><td><?= $escape($person['relation']); ?></td></tr>
                 <?php } ?>
                 </tbody>
             </table>
